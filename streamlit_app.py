@@ -935,15 +935,24 @@ def page_title(judul: str, subjudul: str = "") -> None:
         )
 
 
-def metrik_kecil(label: str, nilai: str, sub: str = "") -> None:
+def metrik_kecil(label: str, nilai: str, sub: str = "", warna_aksen: str = "#1E5A8A", ikon: str = "") -> None:
     # Inline style supaya pasti applied walau CSS class tidak loading
+    bg_tint = warna_aksen + "15"  # tint muda (hex alpha)
+    ikon_html = (
+        f'<div style="display:inline-flex; align-items:center; justify-content:center; '
+        f'width:34px; height:34px; border-radius:10px; '
+        f'background:{bg_tint}; color:{warna_aksen}; font-size:1.1rem; '
+        f'float:right; margin-top:-0.2rem;">{ikon}</div>'
+        if ikon else ""
+    )
     st.markdown(
         f'<div style="background:#FFFFFF; padding:1rem 1.1rem; border-radius:12px; '
         f'border:1px solid #E2E8F0; position:relative; overflow:hidden; '
-        f'border-top:3px solid #1E5A8A; margin-bottom:0.5rem;">'
+        f'border-top:4px solid {warna_aksen}; margin-bottom:0.5rem;">'
+        f'{ikon_html}'
         f'<div style="color:#64748B; font-size:0.73rem; font-weight:600; '
         f'text-transform:uppercase; letter-spacing:0.4px;">{label}</div>'
-        f'<div style="font-size:1.5rem; font-weight:700; color:#0A3B5E; '
+        f'<div style="font-size:1.5rem; font-weight:700; color:{warna_aksen}; '
         f'margin-top:0.3rem; line-height:1.1;">{nilai}</div>'
         f'<div style="color:#94A3B8; font-size:0.78rem; margin-top:0.2rem;">{sub or "&nbsp;"}</div>'
         f'</div>',
@@ -1014,10 +1023,24 @@ def halaman_ringkasan() -> None:
     tgl_str = data["tanggal_terbaru"].strftime("%Y-%m-%d") if pd.notna(data["tanggal_terbaru"]) else "-"
 
     k1, k2, k3, k4 = st.columns(4)
-    with k1: metrik_kecil("Total ulasan dianalisis", f"{data['total']:,}".replace(",", "."), f"{data['jumlah_aplikasi']} aplikasi")
-    with k2: metrik_kecil("Rata-rata sentimen positif", f"{data['positif_pct']:.1f}%".replace(".", ","), "dari seluruh ulasan")
-    with k3: metrik_kecil("Model terbaik", "SVM", "berdasarkan macro-F1")
-    with k4: metrik_kecil("Data terakhir", tgl_str, "tanggal ulasan terbaru")
+    with k1:
+        metrik_kecil("Total ulasan dianalisis",
+                     f"{data['total']:,}".replace(",", "."),
+                     f"{data['jumlah_aplikasi']} aplikasi",
+                     warna_aksen="#1E5A8A", ikon="📊")
+    with k2:
+        metrik_kecil("Rata-rata sentimen positif",
+                     f"{data['positif_pct']:.1f}%".replace(".", ","),
+                     "dari seluruh ulasan",
+                     warna_aksen="#10B981", ikon="💚")
+    with k3:
+        metrik_kecil("Model terbaik", "SVM",
+                     "berdasarkan macro-F1",
+                     warna_aksen="#8B5CF6", ikon="🏆")
+    with k4:
+        metrik_kecil("Data terakhir", tgl_str,
+                     "tanggal ulasan terbaru",
+                     warna_aksen="#F59E0B", ikon="📅")
 
     st.markdown("<div style='height:0.8rem'></div>", unsafe_allow_html=True)
 
