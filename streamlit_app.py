@@ -380,10 +380,8 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Password visibility toggle → emoji mata via pseudo-element, teks "visibility" disembunyikan */
-    [data-testid="stPasswordVisibilityToggleButton"],
-    .stTextInput div[data-baseweb="input"] button,
-    div[data-baseweb="input"] button {
+    /* Password visibility toggle → emoji mata via pseudo-element */
+    [data-testid="stPasswordVisibilityToggleButton"] {
         font-size: 0 !important;
         color: transparent !important;
         width: 38px !important;
@@ -395,30 +393,18 @@ st.markdown(
         position: relative !important;
         overflow: hidden !important;
     }
-    [data-testid="stPasswordVisibilityToggleButton"]::before,
-    .stTextInput div[data-baseweb="input"] button::before,
-    div[data-baseweb="input"] button::before {
+    [data-testid="stPasswordVisibilityToggleButton"]::before {
         content: '👁' !important;
         font-size: 18px !important;
-        line-height: 38px !important;
         color: #64748B !important;
         position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-align: center !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
         font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif !important;
     }
-    [data-testid="stPasswordVisibilityToggleButton"] *,
-    .stTextInput div[data-baseweb="input"] button > *,
-    div[data-baseweb="input"] button > * {
+    [data-testid="stPasswordVisibilityToggleButton"] * {
         display: none !important;
-        visibility: hidden !important;
-        font-size: 0 !important;
     }
 
     /* File uploader — kecilkan ukuran teks dan tombol supaya tidak melebihi kotak */
