@@ -1398,7 +1398,6 @@ def _cari_tabel_ulasan() -> tuple:
         return None, None
     if df.empty: return None, None
     tabel_kolom = df.groupby("table_name")["column_name"].apply(list).to_dict()
-    # Kandidat nama tabel yang mungkin berisi teks ulasan
     kandidat_tabel = ("ulasan", "ulasan_mentah", "review", "reviews", "content", "comment", "comments")
     kandidat_kolom = ("content_bersih", "content_final", "content", "ulasan", "teks", "text", "review", "komentar")
     for tabel in kandidat_tabel:
@@ -1408,6 +1407,27 @@ def _cari_tabel_ulasan() -> tuple:
                 if kol in kolom:
                     return tabel, kol
     return None, None
+
+
+def _pastikan_tabel_ulasan() -> tuple:
+    """Pastikan ada tabel ulasan. Kalau belum ada, buat otomatis dengan skema minimal.
+    Return (nama_tabel, kolom_teks)."""
+    nama, kolom = _cari_tabel_ulasan()
+    if nama is not None: return nama, kolom
+    # Coba buat tabel ulasan minimal
+    try:
+        eksekusi(
+            """CREATE TABLE IF NOT EXISTS ulasan (
+                 id_ulasan SERIAL PRIMARY KEY,
+                 content TEXT,
+                 score INT,
+                 at_date DATE,
+                 content_bersih TEXT
+               )"""
+        )
+        return "ulasan", "content"
+    except Exception:
+        return None, None
 
 
 @st.cache_resource(show_spinner="Melatih model pada data yang ada (sekali per sesi)...")
@@ -1601,23 +1621,42 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
         if tgl not in cache_waktu: cache_waktu[tgl] = ambil_atau_buat_id_waktu(tgl)
         return cache_waktu[tgl]
 
-    nama_tabel_ulasan, kolom_teks_ulasan = _cari_tabel_ulasan()
-    # Cek kolom fact_sentimen yang tersedia (untuk kompatibilitas kolom opsional)
+    # Pastikan tabel ulasan ada (buat otomatis kalau belum)
+    nama_tabel_ulasan, kolom_teks_ulasan = _pastikan_tabel_ulasan()
+    if nama_tabel_ulasan is None:
+        st.error("Tidak bisa menemukan atau membuat tabel 'ulasan' di database. "
+                 "Periksa izin CREATE TABLE pada DATABASE_URL.")
+        return
+
+    # Cek kolom fact_sentimen yang tersedia
     try:
         df_kol_fakta = kueri(
-            "SELECT column_name FROM information_schema.columns "
+            "SELECT column_name, is_nullable FROM information_schema.columns "
             "WHERE table_schema='public' AND table_name='fact_sentimen'"
         )
         kol_fakta = set(df_kol_fakta["column_name"].tolist())
+        kol_nullable = dict(zip(df_kol_fakta["column_name"], df_kol_fakta["is_nullable"]))
     except Exception:
-        kol_fakta = {"id_aplikasi","id_waktu","id_model","id_sentimen","id_sentimen_prediksi"}
+        kol_fakta = {"id_aplikasi","id_waktu","id_model","id_sentimen","id_sentimen_prediksi","id_ulasan"}
+        kol_nullable = {}
 
     pakai_prediksi_benar = "prediksi_benar" in kol_fakta
     pakai_data_uji = "data_uji" in kol_fakta
     pakai_id_ulasan = "id_ulasan" in kol_fakta
 
+    # Cek kolom tabel ulasan yang tersedia (untuk INSERT yang kompatibel)
+    try:
+        df_kol_ulasan = kueri(
+            f"SELECT column_name FROM information_schema.columns "
+            f"WHERE table_schema='public' AND table_name='{nama_tabel_ulasan}'"
+        )
+        kol_ulasan = set(df_kol_ulasan["column_name"].tolist())
+    except Exception:
+        kol_ulasan = {kolom_teks_ulasan, "id_ulasan"}
+
     conn = get_conn()
     gagal = 0
+    pesan_error_pertama = None
     with conn.cursor() as cur:
         for i, row in df_terpakai.iterrows():
             id_label = sent_map.get(row["label"])
@@ -1627,43 +1666,50 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
             id_pred_svm = sent_map.get(id_pred_svm_val)
             try:
                 id_w = waktu_id(row["at"])
-                id_u = None
-                if nama_tabel_ulasan is not None:
-                    try:
-                        cur.execute(
-                            f"INSERT INTO {nama_tabel_ulasan} ({kolom_teks_ulasan}) VALUES (%s) RETURNING id_ulasan",
-                            (row["content"],),
-                        )
-                        id_u = int(cur.fetchone()[0])
-                    except Exception:
-                        try: conn.rollback()
-                        except Exception: pass
-                        conn = get_conn()
-                        cur = conn.cursor()
-                        id_u = None
 
-                # Bangun INSERT fact_sentimen secara dinamis
+                # Insert ke tabel ulasan — bangun kolom yang ada saja
+                kol_u = [kolom_teks_ulasan]; nilai_u = [row["content"]]
+                if "score" in kol_ulasan:
+                    kol_u.append("score"); nilai_u.append(int(row["score"]))
+                if "at_date" in kol_ulasan:
+                    kol_u.append("at_date"); nilai_u.append(row["at"])
+                elif "tanggal" in kol_ulasan:
+                    kol_u.append("tanggal"); nilai_u.append(row["at"])
+                if "content_bersih" in kol_ulasan and kolom_teks_ulasan != "content_bersih":
+                    kol_u.append("content_bersih"); nilai_u.append(row["content_bersih"])
+                sql_u = f"INSERT INTO {nama_tabel_ulasan} ({', '.join(kol_u)}) VALUES ({', '.join(['%s']*len(nilai_u))}) RETURNING id_ulasan"
+                cur.execute(sql_u, tuple(nilai_u))
+                id_u = int(cur.fetchone()[0])
+
+                # Insert ke fact_sentimen (2 baris: NB + SVM)
                 for id_mod_cur, id_pred_cur in [(id_nb, id_pred_nb), (id_svm, id_pred_svm)]:
-                    kolom = ["id_aplikasi", "id_waktu", "id_model", "id_sentimen", "id_sentimen_prediksi"]
-                    nilai = [id_app, id_w, id_mod_cur, id_label, id_pred_cur]
-                    if pakai_id_ulasan and id_u is not None:
-                        kolom.insert(0, "id_ulasan"); nilai.insert(0, id_u)
+                    kolom = ["id_ulasan", "id_aplikasi", "id_waktu", "id_model", "id_sentimen", "id_sentimen_prediksi"]
+                    nilai = [id_u, id_app, id_w, id_mod_cur, id_label, id_pred_cur]
                     if pakai_prediksi_benar:
                         kolom.append("prediksi_benar"); nilai.append(id_label == id_pred_cur)
                     if pakai_data_uji:
                         kolom.append("data_uji"); nilai.append(False)
-                    sql_fakta = f"INSERT INTO fact_sentimen ({', '.join(kolom)}) VALUES ({', '.join(['%s']*len(nilai))})"
-                    cur.execute(sql_fakta, tuple(nilai))
+                    # Filter kolom yang tidak ada di schema
+                    kolom_final, nilai_final = [], []
+                    for k, v in zip(kolom, nilai):
+                        if k in kol_fakta:
+                            kolom_final.append(k); nilai_final.append(v)
+                    sql_fakta = f"INSERT INTO fact_sentimen ({', '.join(kolom_final)}) VALUES ({', '.join(['%s']*len(nilai_final))})"
+                    cur.execute(sql_fakta, tuple(nilai_final))
+                conn.commit()
             except Exception as e:
                 gagal += 1
+                if pesan_error_pertama is None:
+                    pesan_error_pertama = str(e)
                 try: conn.rollback()
                 except Exception: pass
                 conn = get_conn()
                 cur = conn.cursor()
-                if gagal < 3:
-                    st.warning(f"Baris {i}: {e}")
     try: conn.commit()
     except Exception: pass
+
+    if gagal > 0 and pesan_error_pertama:
+        st.error(f"Ada {gagal} baris gagal insert. Pesan error pertama:\n\n{pesan_error_pertama}")
 
     # 8. Catat ke riwayat_pelatihan + unggahan
     try:
