@@ -169,48 +169,7 @@ st.markdown(
         cursor: pointer;
     }
 
-    /* Bottom nav mobile — DESKTOP: SEMBUNYIKAN TOTAL via container key */
-    .st-key-bottom_nav_mobile_container {display: none !important;}
-
-    /* Mobile only: tampilkan bottom nav, sembunyikan sidebar */
-    @media (max-width: 768px) {
-        [data-testid="stSidebar"],
-        [data-testid="collapsedControl"],
-        [data-testid="stSidebarCollapsedControl"],
-        [data-testid="stSidebarCollapseButton"] {
-            display: none !important;
-        }
-        .block-container {padding-bottom: 6rem !important;}
-        .st-key-bottom_nav_mobile_container {
-            display: block !important;
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important; right: 0 !important;
-            background: #FFFFFF !important;
-            border-top: 1px solid #E2E8F0 !important;
-            padding: 0.4rem 0.4rem 0.6rem 0.4rem !important;
-            z-index: 99999 !important;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.08) !important;
-            margin: 0 !important;
-        }
-        .st-key-bottom_nav_mobile_container button {
-            background: transparent !important;
-            border: none !important;
-            color: #64748B !important;
-            padding: 0.5rem 0.2rem !important;
-            font-size: 0.72rem !important;
-            font-weight: 500 !important;
-            line-height: 1.3 !important;
-            white-space: pre-line !important;
-            box-shadow: none !important;
-            min-height: 54px;
-        }
-        .st-key-bottom_nav_mobile_container button p {
-            font-size: 0.72rem !important;
-            line-height: 1.3 !important;
-            margin: 0 !important;
-        }
-    }
+    /* (Bottom nav mobile dihapus — pakai sidebar untuk semua ukuran layar) */
 
     /* Mobile responsive — sidebar teks jelas, background lebih kontras */
     @media (max-width: 768px) {
@@ -2140,35 +2099,6 @@ def halaman_login() -> None:
 # ---------------------------------------------------------------------------
 # Routing
 # ---------------------------------------------------------------------------
-def render_bottom_nav_mobile(opsi: list, aktif: str) -> None:
-    """Bottom navigation bar untuk tampilan mobile. Hidden di desktop via CSS."""
-    ikon_map = {
-        "Ringkasan": "📊",
-        "Perbandingan Sentimen": "💭",
-        "Performa Algoritma": "📈",
-        "Admin": "⚙️",
-    }
-    label_map = {
-        "Ringkasan": "Ringkasan",
-        "Perbandingan Sentimen": "Sentimen",
-        "Performa Algoritma": "Performa",
-        "Admin": "Admin",
-    }
-    st.markdown('<div class="bottom-nav-mobile-wrapper">', unsafe_allow_html=True)
-    cols = st.columns(len(opsi))
-    for i, nama in enumerate(opsi):
-        kelas_aktif = "nav-aktif" if nama == aktif else ""
-        with cols[i]:
-            if st.button(
-                f"{ikon_map.get(nama, '•')}\n{label_map.get(nama, nama)}",
-                key=f"nav_m_{i}",
-                use_container_width=True,
-            ):
-                st.session_state["halaman_aktif"] = nama
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
 def aplikasi_utama() -> None:
     user = st.session_state["user"]
     opsi = ["Ringkasan", "Perbandingan Sentimen", "Performa Algoritma"]
@@ -2204,14 +2134,6 @@ def aplikasi_utama() -> None:
     elif pilihan == "Perbandingan Sentimen": halaman_sentimen()
     elif pilihan == "Performa Algoritma": halaman_performa()
     elif pilihan == "Admin": halaman_admin(user)
-
-    # Bottom navigation bar — hanya render di mobile (dibungkus dengan container key)
-    try:
-        with st.container(key="bottom_nav_mobile_container"):
-            render_bottom_nav_mobile(opsi, pilihan)
-    except TypeError:
-        # Streamlit lama yang tidak support key pada container
-        render_bottom_nav_mobile(opsi, pilihan)
 
 
 def main() -> None:
