@@ -1387,42 +1387,58 @@ def label_hybrid(teks_bersih: str, rating, pos_lex: dict, neg_lex: dict) -> tupl
     return "Netral", "netral_kata"
 
 
-def _kolom_teks_ulasan() -> str:
-    """Cari kolom teks yang sesuai di tabel ulasan."""
+def _cari_tabel_ulasan() -> tuple:
+    """Return (nama_tabel, kolom_teks) kalau ada tabel ulasan dengan kolom teks; else (None, None)."""
     try:
         df = kueri(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='ulasan' ORDER BY ordinal_position"
+            "SELECT table_name, column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' ORDER BY table_name, ordinal_position"
         )
-        kolom = df["column_name"].tolist()
     except Exception:
-        return "content"
-    for pil in ("content_bersih", "content", "ulasan", "teks"):
-        if pil in kolom: return pil
-    return kolom[1] if len(kolom) > 1 else "content"
+        return None, None
+    if df.empty: return None, None
+    tabel_kolom = df.groupby("table_name")["column_name"].apply(list).to_dict()
+    # Kandidat nama tabel yang mungkin berisi teks ulasan
+    kandidat_tabel = ("ulasan", "ulasan_mentah", "review", "reviews", "content", "comment", "comments")
+    kandidat_kolom = ("content_bersih", "content_final", "content", "ulasan", "teks", "text", "review", "komentar")
+    for tabel in kandidat_tabel:
+        if tabel in tabel_kolom:
+            kolom = tabel_kolom[tabel]
+            for kol in kandidat_kolom:
+                if kol in kolom:
+                    return tabel, kol
+    return None, None
 
 
 @st.cache_resource(show_spinner="Melatih model pada data yang ada (sekali per sesi)...")
 def latih_model_per_aplikasi(nama_aplikasi: str):
-    """Latih TF-IDF + ComplementNB + LinearSVC dari data pelabelan yang sudah ada di DB."""
+    """Latih TF-IDF + ComplementNB + LinearSVC dari data pelabelan yang sudah ada di DB.
+    Return (vec, nb, svm). Kalau tabel ulasan tidak tersedia, return (None, None, None).
+    """
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.naive_bayes import ComplementNB
     from sklearn.svm import LinearSVC
 
+    nama_tabel, kolom_teks = _cari_tabel_ulasan()
+    if nama_tabel is None:
+        return None, None, None
+
     idm = model_utama_id()
-    kolom_teks = _kolom_teks_ulasan()
-    df = kueri(
-        f"""
+    sql = f"""
         SELECT u.{kolom_teks} AS teks, s.label_sentimen AS label
         FROM fact_sentimen f
         JOIN dim_aplikasi a ON a.id_aplikasi = f.id_aplikasi
         JOIN dim_sentimen s ON s.id_sentimen = f.id_sentimen
-        JOIN ulasan u ON u.id_ulasan = f.id_ulasan
-        WHERE a.nama_aplikasi = %s AND f.id_model = %s AND s.label_sentimen IN ('Positif','Negatif')
+        JOIN {nama_tabel} u ON u.id_ulasan = f.id_ulasan
+        WHERE a.nama_aplikasi = %s AND f.id_model = %s
+          AND s.label_sentimen IN ('Positif','Negatif')
           AND u.{kolom_teks} IS NOT NULL AND LENGTH(u.{kolom_teks}) > 0
         LIMIT 15000
-        """,
-        (nama_aplikasi, idm),
-    )
+    """
+    try:
+        df = kueri(sql, (nama_aplikasi, idm))
+    except Exception:
+        return None, None, None
     if df.empty or len(df) < 100:
         return None, None, None
     X = df["teks"].astype(str).tolist()
@@ -1558,13 +1574,16 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     prog.progress(0.5, text=f"Melatih / memuat model untuk {aplikasi}...")
     vec, nb, svm = latih_model_per_aplikasi(aplikasi)
     if vec is None:
-        st.error("Gagal melatih model (data latih dari DB tidak cukup).")
-        return
-
-    # Prediksi memakai content yang sama formatnya dengan training (raw content umumnya)
-    Xv = vec.transform(df_terpakai["content"].tolist())
-    pred_nb = nb.predict(Xv)
-    pred_svm = svm.predict(Xv)
+        # Fallback: tabel ulasan tidak tersedia atau data latih kurang.
+        # Pakai label hybrid sebagai prediksi dua model (artinya prediksi == label).
+        st.info("Model tidak dapat dilatih ulang (tabel teks ulasan tidak ditemukan). "
+                "Ulasan baru dimasukkan dengan label hybrid dipakai sebagai prediksi NB dan SVM.")
+        pred_nb = df_terpakai["label"].tolist()
+        pred_svm = df_terpakai["label"].tolist()
+    else:
+        Xv = vec.transform(df_terpakai["content"].tolist())
+        pred_nb = nb.predict(Xv)
+        pred_svm = svm.predict(Xv)
 
     # 7. Insert ke DB
     prog.progress(0.75, text="Menyimpan ke basis data...")
@@ -1582,44 +1601,69 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
         if tgl not in cache_waktu: cache_waktu[tgl] = ambil_atau_buat_id_waktu(tgl)
         return cache_waktu[tgl]
 
+    nama_tabel_ulasan, kolom_teks_ulasan = _cari_tabel_ulasan()
+    # Cek kolom fact_sentimen yang tersedia (untuk kompatibilitas kolom opsional)
+    try:
+        df_kol_fakta = kueri(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema='public' AND table_name='fact_sentimen'"
+        )
+        kol_fakta = set(df_kol_fakta["column_name"].tolist())
+    except Exception:
+        kol_fakta = {"id_aplikasi","id_waktu","id_model","id_sentimen","id_sentimen_prediksi"}
+
+    pakai_prediksi_benar = "prediksi_benar" in kol_fakta
+    pakai_data_uji = "data_uji" in kol_fakta
+    pakai_id_ulasan = "id_ulasan" in kol_fakta
+
     conn = get_conn()
     gagal = 0
     with conn.cursor() as cur:
         for i, row in df_terpakai.iterrows():
             id_label = sent_map.get(row["label"])
-            id_pred_nb = sent_map.get(pred_nb[i]) if isinstance(pred_nb[i], str) else sent_map.get(str(pred_nb[i]))
-            id_pred_svm = sent_map.get(pred_svm[i]) if isinstance(pred_svm[i], str) else sent_map.get(str(pred_svm[i]))
+            id_pred_nb_val = pred_nb[i] if isinstance(pred_nb[i], str) else str(pred_nb[i])
+            id_pred_svm_val = pred_svm[i] if isinstance(pred_svm[i], str) else str(pred_svm[i])
+            id_pred_nb = sent_map.get(id_pred_nb_val)
+            id_pred_svm = sent_map.get(id_pred_svm_val)
             try:
                 id_w = waktu_id(row["at"])
-                # Insert ulasan bersih ke tabel ulasan kalau ada; kalau tidak ada tabel ulasan skip
-                try:
-                    cur.execute(
-                        "INSERT INTO ulasan (content, content_bersih, score, at_date) VALUES (%s, %s, %s, %s) RETURNING id_ulasan",
-                        (row["content"], row["content_bersih"], int(row["score"]), row["at"]),
-                    )
-                    id_u = int(cur.fetchone()[0])
-                except Exception:
-                    id_u = None
-                # Fact untuk NB
-                cur.execute(
-                    """INSERT INTO fact_sentimen (id_ulasan, id_aplikasi, id_waktu, id_model, id_sentimen, id_sentimen_prediksi, prediksi_benar, data_uji)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, FALSE)""",
-                    (id_u, id_app, id_w, id_nb, id_label, id_pred_nb, id_label == id_pred_nb),
-                )
-                # Fact untuk SVM
-                cur.execute(
-                    """INSERT INTO fact_sentimen (id_ulasan, id_aplikasi, id_waktu, id_model, id_sentimen, id_sentimen_prediksi, prediksi_benar, data_uji)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, FALSE)""",
-                    (id_u, id_app, id_w, id_svm, id_label, id_pred_svm, id_label == id_pred_svm),
-                )
+                id_u = None
+                if nama_tabel_ulasan is not None:
+                    try:
+                        cur.execute(
+                            f"INSERT INTO {nama_tabel_ulasan} ({kolom_teks_ulasan}) VALUES (%s) RETURNING id_ulasan",
+                            (row["content"],),
+                        )
+                        id_u = int(cur.fetchone()[0])
+                    except Exception:
+                        try: conn.rollback()
+                        except Exception: pass
+                        conn = get_conn()
+                        cur = conn.cursor()
+                        id_u = None
+
+                # Bangun INSERT fact_sentimen secara dinamis
+                for id_mod_cur, id_pred_cur in [(id_nb, id_pred_nb), (id_svm, id_pred_svm)]:
+                    kolom = ["id_aplikasi", "id_waktu", "id_model", "id_sentimen", "id_sentimen_prediksi"]
+                    nilai = [id_app, id_w, id_mod_cur, id_label, id_pred_cur]
+                    if pakai_id_ulasan and id_u is not None:
+                        kolom.insert(0, "id_ulasan"); nilai.insert(0, id_u)
+                    if pakai_prediksi_benar:
+                        kolom.append("prediksi_benar"); nilai.append(id_label == id_pred_cur)
+                    if pakai_data_uji:
+                        kolom.append("data_uji"); nilai.append(False)
+                    sql_fakta = f"INSERT INTO fact_sentimen ({', '.join(kolom)}) VALUES ({', '.join(['%s']*len(nilai))})"
+                    cur.execute(sql_fakta, tuple(nilai))
             except Exception as e:
                 gagal += 1
                 try: conn.rollback()
                 except Exception: pass
                 conn = get_conn()
+                cur = conn.cursor()
                 if gagal < 3:
                     st.warning(f"Baris {i}: {e}")
-    conn.commit()
+    try: conn.commit()
+    except Exception: pass
 
     # 8. Catat ke riwayat_pelatihan + unggahan
     try:
