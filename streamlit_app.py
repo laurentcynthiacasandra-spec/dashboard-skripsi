@@ -55,7 +55,6 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined');
 
     html, body, [data-testid="stAppViewContainer"] * {
         font-family: 'Inter', -apple-system, sans-serif !important;
@@ -86,15 +85,19 @@ st.markdown(
 
     /* Sidebar nav vertical pill */
     [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] {
-        display: flex; flex-direction: column; gap: 3px; padding: 0;
+        display: flex; flex-direction: column; gap: 4px; padding: 0;
     }
     [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
         background: transparent !important; border: none !important;
-        padding: 0.65rem 1rem !important; border-radius: 8px !important;
+        padding: 0.8rem 1rem !important; border-radius: 10px !important;
         margin: 0 !important; cursor: pointer;
-        font-weight: 500; font-size: 0.92rem;
-        color: #334155 !important;
+        font-weight: 600; font-size: 1rem;
+        color: #1E293B !important;
         transition: all 0.15s ease;
+    }
+    [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label p {
+        font-size: 1rem !important; font-weight: 600 !important;
+        color: inherit !important; margin: 0 !important;
     }
     [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:hover {
         background: #F1F5F9 !important;
@@ -104,8 +107,73 @@ st.markdown(
         color: white !important;
         box-shadow: 0 2px 8px rgba(30,90,138,0.25);
     }
+    [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) p {
+        color: white !important;
+    }
     [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:first-child {display: none !important;}
-    [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:last-child p {color: inherit !important; margin: 0;}
+
+    /* Sidebar collapse/expand button — ganti teks ligature "keyboard_double_arrow_left" jadi ikon SVG */
+    [data-testid="stSidebarCollapseButton"] button,
+    [data-testid="stSidebarCollapsedControl"] button,
+    [data-testid="collapsedControl"] button,
+    [data-testid="stSidebar"] button[kind="headerNoPadding"] {
+        font-size: 0 !important;
+        line-height: 0 !important;
+        color: transparent !important;
+        text-indent: -9999px !important;
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background-color: #FFFFFF !important;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%231E5A8A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='15 18 9 12 15 6'/></svg>") !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-size: 20px 20px !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stSidebarCollapseButton"] button *,
+    [data-testid="stSidebarCollapsedControl"] button *,
+    [data-testid="collapsedControl"] button *,
+    [data-testid="stSidebar"] button[kind="headerNoPadding"] * {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    /* Tombol untuk membuka sidebar saat tertutup (mobile) */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapsedControl"] {
+        display: block !important; opacity: 1 !important; visibility: visible !important;
+        position: fixed !important; top: 0.6rem !important; left: 0.6rem !important;
+        z-index: 999999 !important;
+        background: transparent !important;
+    }
+    [data-testid="collapsedControl"] button,
+    [data-testid="stSidebarCollapsedControl"] button {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%231E5A8A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>") !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+    }
+
+    /* Mobile responsive — label sidebar lebih tegas */
+    @media (max-width: 768px) {
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
+            padding: 0.9rem 1rem !important;
+            font-size: 1rem !important;
+            color: #0A3B5E !important;
+            background: #F8FAFC !important;
+            border: 1px solid #E2E8F0 !important;
+        }
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label p {
+            color: #0A3B5E !important;
+            font-weight: 600 !important;
+        }
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked),
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) p {
+            color: white !important;
+        }
+    }
 
     /* Main radio pill */
     .main .stRadio > div[role="radiogroup"] {gap: 6px; flex-wrap: wrap; margin-bottom: 0.3rem;}
@@ -264,19 +332,17 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Password visibility toggle → ikon mata SVG inline, teks disembunyikan */
+    /* Password visibility toggle → ikon mata SVG inline, teks disembunyikan
+       Hanya target password toggle; jangan mengganggu tombol lain seperti file upload */
     [data-testid="stPasswordVisibilityToggleButton"],
-    button[aria-label*="password" i],
-    button[aria-label*="visibility" i],
-    [data-baseweb="input"] button {
+    button[kind="headerNoPadding"][data-testid*="PasswordVisibility" i],
+    .stTextInput button[data-testid*="Password" i] {
         padding: 0 !important;
         min-width: 36px !important;
         width: 36px !important;
         height: 36px !important;
         font-size: 0 !important;
         color: transparent !important;
-        text-indent: -9999px !important;
-        overflow: hidden !important;
         background-color: transparent !important;
         background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>") !important;
         background-repeat: no-repeat !important;
@@ -284,14 +350,8 @@ st.markdown(
         background-size: 22px 22px !important;
         border: none !important;
     }
-    [data-testid="stPasswordVisibilityToggleButton"] *,
-    button[aria-label*="password" i] *,
-    button[aria-label*="visibility" i] *,
-    [data-baseweb="input"] button * {
+    [data-testid="stPasswordVisibilityToggleButton"] * {
         display: none !important;
-        visibility: hidden !important;
-        font-size: 0 !important;
-        color: transparent !important;
     }
 
     /* Input & selectbox modern */
@@ -697,13 +757,58 @@ def riwayat_unggahan() -> pd.DataFrame:
         return kueri(
             """
             SELECT r.id, r.waktu, u.username, r.aplikasi, r.berkas,
-                   r.jumlah_baris, r.status, r.catatan
+                   r.jumlah_baris, r.status, r.catatan,
+                   COALESCE(r.id_ulasan_awal, NULL) AS id_awal,
+                   COALESCE(r.id_ulasan_akhir, NULL) AS id_akhir
             FROM riwayat_pelatihan r JOIN users u ON u.id_user = r.id_user
             ORDER BY r.waktu DESC LIMIT 100
             """
         )
     except Exception:
-        return pd.DataFrame()
+        # Fallback tanpa kolom id_awal/id_akhir
+        try:
+            df = kueri(
+                """
+                SELECT r.id, r.waktu, u.username, r.aplikasi, r.berkas,
+                       r.jumlah_baris, r.status, r.catatan
+                FROM riwayat_pelatihan r JOIN users u ON u.id_user = r.id_user
+                ORDER BY r.waktu DESC LIMIT 100
+                """
+            )
+            df["id_awal"] = None
+            df["id_akhir"] = None
+            return df
+        except Exception:
+            return pd.DataFrame()
+
+
+def batalkan_unggahan(id_riwayat: int, id_awal, id_akhir, nama_tabel_ulasan: str = "ulasan") -> tuple:
+    """Hapus data fact_sentimen + ulasan yang berasal dari unggahan ini.
+    Return (sukses, pesan)."""
+    if id_awal is None or id_akhir is None or int(id_awal) > int(id_akhir):
+        try:
+            eksekusi(
+                "UPDATE riwayat_pelatihan SET status = 'Dibatalkan', "
+                "catatan = COALESCE(catatan,'') || ' | Dihapus dari riwayat (tidak ada data terkait).' "
+                "WHERE id = %s", (int(id_riwayat),),
+            )
+            return True, "Entri riwayat ditandai Dibatalkan."
+        except Exception as e:
+            return False, f"Gagal memperbarui riwayat: {e}"
+    try:
+        awal, akhir = int(id_awal), int(id_akhir)
+        # Hapus dari fact_sentimen dulu (karena id_ulasan FK ke ulasan)
+        eksekusi("DELETE FROM fact_sentimen WHERE id_ulasan BETWEEN %s AND %s", (awal, akhir))
+        eksekusi(f"DELETE FROM {nama_tabel_ulasan} WHERE id_ulasan BETWEEN %s AND %s", (awal, akhir))
+        # Tandai riwayat sebagai Dibatalkan
+        eksekusi(
+            "UPDATE riwayat_pelatihan SET status = 'Dibatalkan', "
+            "catatan = COALESCE(catatan,'') || ' | Data unggahan dihapus oleh Admin.' "
+            "WHERE id = %s", (int(id_riwayat),),
+        )
+        return True, f"Berhasil menghapus data (id_ulasan {awal}–{akhir}) dan menandai Dibatalkan."
+    except Exception as e:
+        return False, f"Gagal membatalkan: {e}"
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -1237,17 +1342,45 @@ def halaman_admin(user: dict) -> None:
         if riwayat.empty:
             st.info("Belum ada unggahan.")
         else:
-            tampil = pd.DataFrame({
-                "ID": riwayat["id"].astype(int),
-                "Waktu": riwayat["waktu"].apply(lambda t: t.strftime("%d %b %Y %H:%M") if pd.notna(t) else "-"),
-                "Pengguna": riwayat["username"],
-                "Aplikasi": riwayat["aplikasi"],
-                "Berkas": riwayat["berkas"].fillna("-"),
-                "Baris": riwayat["jumlah_baris"].fillna(0).astype(int),
-                "Status": riwayat["status"],
-                "Catatan": riwayat["catatan"].fillna("-"),
-            })
-            st.table(tampil)
+            # Header baris
+            kolom_header = st.columns([0.6, 1.4, 1, 1, 1.6, 0.7, 1, 2.2, 1])
+            for k, lbl in zip(kolom_header,
+                              ["ID", "Waktu", "Pengguna", "Aplikasi", "Berkas",
+                               "Baris", "Status", "Catatan", "Aksi"]):
+                k.markdown(f"<div style='color:#0A3B5E; font-weight:700; font-size:0.78rem; "
+                           f"text-transform:uppercase; letter-spacing:0.3px; padding:0.4rem 0 0.6rem 0; "
+                           f"border-bottom:1px solid #E2E8F0;'>{lbl}</div>", unsafe_allow_html=True)
+
+            for _, r in riwayat.iterrows():
+                kolom = st.columns([0.6, 1.4, 1, 1, 1.6, 0.7, 1, 2.2, 1])
+                kolom[0].markdown(f"<div style='padding:0.5rem 0;'>{int(r['id'])}</div>", unsafe_allow_html=True)
+                waktu_s = r["waktu"].strftime("%d %b %Y %H:%M") if pd.notna(r["waktu"]) else "-"
+                kolom[1].markdown(f"<div style='padding:0.5rem 0; font-size:0.85rem;'>{waktu_s}</div>", unsafe_allow_html=True)
+                kolom[2].markdown(f"<div style='padding:0.5rem 0;'>{r['username']}</div>", unsafe_allow_html=True)
+                kolom[3].markdown(f"<div style='padding:0.5rem 0;'>{r['aplikasi']}</div>", unsafe_allow_html=True)
+                kolom[4].markdown(f"<div style='padding:0.5rem 0; font-size:0.82rem; word-break:break-all;'>{r['berkas'] or '-'}</div>", unsafe_allow_html=True)
+                kolom[5].markdown(f"<div style='padding:0.5rem 0; text-align:right;'>{int(r['jumlah_baris']) if pd.notna(r['jumlah_baris']) else 0}</div>", unsafe_allow_html=True)
+                warna_status = {"Selesai": "#059669", "Sebagian gagal": "#D97706",
+                                "Dibatalkan": "#94A3B8", "Diterima": "#1E5A8A",
+                                "Tanpa data baru": "#64748B"}.get(r["status"], "#64748B")
+                kolom[6].markdown(f"<div style='padding:0.5rem 0; color:{warna_status}; font-weight:600; font-size:0.85rem;'>{r['status']}</div>", unsafe_allow_html=True)
+                kolom[7].markdown(f"<div style='padding:0.5rem 0; font-size:0.82rem; color:#475569;'>{(r['catatan'] or '-')[:200]}</div>", unsafe_allow_html=True)
+                # Tombol batalkan (kecuali sudah Dibatalkan)
+                if r["status"] != "Dibatalkan":
+                    id_r = int(r["id"])
+                    if kolom[8].button("Batalkan", key=f"batal_{id_r}", use_container_width=True):
+                        sukses, pesan = batalkan_unggahan(id_r, r["id_awal"], r["id_akhir"])
+                        if sukses:
+                            st.success(pesan)
+                            riwayat_unggahan.clear()
+                            ringkasan_global.clear()
+                            performa_semua.clear()
+                            metrik_model.clear()
+                            st.rerun()
+                        else:
+                            st.error(pesan)
+                else:
+                    kolom[8].markdown("<div style='padding:0.5rem 0; color:#94A3B8; font-size:0.82rem;'>—</div>", unsafe_allow_html=True)
 
     with kartu("Kelola Pengguna"):
         pengguna = daftar_pengguna()
@@ -1672,11 +1805,18 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
 
     # Hitung next_id untuk tabel yang mungkin punya sequence out-of-sync
     next_id_ulasan = _max_id(nama_tabel_ulasan, "id_ulasan") + 1
+    id_ulasan_awal = next_id_ulasan  # untuk rollback nanti
     kol_pk_fakta = None
     for kandidat in ("id_fact", "id_fakta", "id_fact_sentimen"):
         if kandidat in kol_fakta:
             kol_pk_fakta = kandidat; break
     next_id_fakta = (_max_id("fact_sentimen", kol_pk_fakta) + 1) if kol_pk_fakta else None
+
+    # Tambah kolom id_ulasan_awal dan id_ulasan_akhir di riwayat_pelatihan kalau belum ada
+    try:
+        eksekusi("ALTER TABLE riwayat_pelatihan ADD COLUMN IF NOT EXISTS id_ulasan_awal INT")
+        eksekusi("ALTER TABLE riwayat_pelatihan ADD COLUMN IF NOT EXISTS id_ulasan_akhir INT")
+    except Exception: pass
 
     conn = get_conn()
     gagal = 0
@@ -1751,6 +1891,7 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
         st.session_state.pop("last_upload_error", None)
 
     # 8. Catat ke riwayat_pelatihan + unggahan
+    id_ulasan_akhir = next_id_ulasan - 1  # id terakhir yang berhasil di-insert (atau coba)
     catatan_lengkap = (
         f"Diproses: {n_dipakai} dipakai ({n_positif} positif / {n_negatif} negatif); "
         f"{n_netral} netral di-skip; {gagal} gagal insert."
@@ -1760,9 +1901,11 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     status_akhir = "Sebagian gagal" if gagal > 0 else "Selesai"
     try:
         eksekusi(
-            "INSERT INTO riwayat_pelatihan (waktu, id_user, aplikasi, berkas, jumlah_baris, status, catatan) "
-            "VALUES (NOW(), %s, %s, %s, %s, %s, %s) RETURNING id",
-            (user["id_user"], aplikasi, berkas.name, n_dipakai, status_akhir, catatan_lengkap),
+            "INSERT INTO riwayat_pelatihan (waktu, id_user, aplikasi, berkas, jumlah_baris, status, catatan, id_ulasan_awal, id_ulasan_akhir) "
+            "VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s, %s)",
+            (user["id_user"], aplikasi, berkas.name, n_dipakai, status_akhir, catatan_lengkap,
+             id_ulasan_awal if n_dipakai - gagal > 0 else None,
+             id_ulasan_akhir if n_dipakai - gagal > 0 else None),
         )
     except Exception: pass
     try:
