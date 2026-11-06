@@ -1213,6 +1213,12 @@ def halaman_performa() -> None:
 # ---------------------------------------------------------------------------
 def halaman_admin(user: dict) -> None:
     page_title("Halaman Admin", "Unggah data ulasan baru dan kelola pengguna")
+    # Tampilkan pesan error dari upload terakhir kalau ada
+    if "last_upload_error" in st.session_state:
+        st.error(st.session_state["last_upload_error"])
+        if st.button("Tutup pesan error", key="tutup_err"):
+            st.session_state.pop("last_upload_error", None)
+            st.rerun()
     data = ringkasan_global()
 
     with kartu("Unggah Data Ulasan Baru"):
@@ -1708,16 +1714,27 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     try: conn.commit()
     except Exception: pass
 
+    # Simpan pesan error ke session_state supaya tetap terlihat setelah rerun
     if gagal > 0 and pesan_error_pertama:
-        st.error(f"Ada {gagal} baris gagal insert. Pesan error pertama:\n\n{pesan_error_pertama}")
+        st.session_state["last_upload_error"] = (
+            f"Ada {gagal} baris gagal insert. Pesan error pertama dari PostgreSQL:\n\n{pesan_error_pertama}"
+        )
+    else:
+        st.session_state.pop("last_upload_error", None)
 
     # 8. Catat ke riwayat_pelatihan + unggahan
+    catatan_lengkap = (
+        f"Diproses: {n_dipakai} dipakai ({n_positif} positif / {n_negatif} negatif); "
+        f"{n_netral} netral di-skip; {gagal} gagal insert."
+    )
+    if gagal > 0 and pesan_error_pertama:
+        catatan_lengkap += f" Error: {pesan_error_pertama[:300]}"
+    status_akhir = "Sebagian gagal" if gagal > 0 else "Selesai"
     try:
         eksekusi(
             "INSERT INTO riwayat_pelatihan (waktu, id_user, aplikasi, berkas, jumlah_baris, status, catatan) "
-            "VALUES (NOW(), %s, %s, %s, %s, 'Selesai', %s) RETURNING id",
-            (user["id_user"], aplikasi, berkas.name, n_dipakai,
-             f"Diproses: {n_dipakai} dipakai ({n_positif} positif / {n_negatif} negatif); {n_netral} netral di-skip; {gagal} gagal insert."),
+            "VALUES (NOW(), %s, %s, %s, %s, %s, %s) RETURNING id",
+            (user["id_user"], aplikasi, berkas.name, n_dipakai, status_akhir, catatan_lengkap),
         )
     except Exception: pass
     try:
