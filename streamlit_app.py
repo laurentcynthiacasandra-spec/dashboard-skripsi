@@ -142,36 +142,79 @@ st.markdown(
         visibility: hidden !important;
     }
 
-    /* Tombol untuk membuka sidebar saat tertutup (mobile) */
+    /* Tombol untuk membuka sidebar saat tertutup — selalu VISIBLE */
     [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapsedControl"] {
-        display: block !important; opacity: 1 !important; visibility: visible !important;
-        position: fixed !important; top: 0.6rem !important; left: 0.6rem !important;
+    [data-testid="stSidebarCollapsedControl"],
+    section[data-testid="stSidebar"][aria-expanded="false"] + div button:first-child {
+        display: flex !important; align-items: center; justify-content: center;
+        opacity: 1 !important; visibility: visible !important;
+        position: fixed !important; top: 0.8rem !important; left: 0.8rem !important;
         z-index: 999999 !important;
-        background: transparent !important;
+        width: 42px !important; height: 42px !important;
+        background: linear-gradient(135deg, #1E5A8A 0%, #0A3B5E 100%) !important;
+        border: none !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        cursor: pointer;
     }
     [data-testid="collapsedControl"] button,
     [data-testid="stSidebarCollapsedControl"] button {
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%231E5A8A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>") !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+        width: 100% !important; height: 100% !important;
+        background-color: transparent !important;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>") !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-size: 22px 22px !important;
+        border: none !important;
+        font-size: 0 !important;
+        color: transparent !important;
+    }
+    [data-testid="collapsedControl"] button:hover,
+    [data-testid="stSidebarCollapsedControl"] button:hover {
+        background-color: rgba(255,255,255,0.1) !important;
     }
 
-    /* Mobile responsive — label sidebar lebih tegas */
+    /* Mobile responsive — sidebar teks jelas, background lebih kontras */
     @media (max-width: 768px) {
+        [data-testid="stSidebar"] {
+            background: #FFFFFF !important;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1) !important;
+            width: 85vw !important;
+            min-width: 280px !important;
+            max-width: 340px !important;
+        }
+        [data-testid="stSidebar"] > div {padding-top: 2rem !important;}
+        [data-testid="stSidebar"] .sidebar-brand {
+            color: #0A3B5E !important;
+            font-size: 1.15rem !important;
+        }
         [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
-            padding: 0.9rem 1rem !important;
-            font-size: 1rem !important;
-            color: #0A3B5E !important;
-            background: #F8FAFC !important;
-            border: 1px solid #E2E8F0 !important;
+            padding: 1rem 1.2rem !important;
+            font-size: 1.05rem !important;
+            color: #0F172A !important;
+            background: #F1F5F9 !important;
+            border: 2px solid #CBD5E1 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label p {
-            color: #0A3B5E !important;
-            font-weight: 600 !important;
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label p,
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label span {
+            color: #0F172A !important;
+            font-weight: 700 !important;
+            opacity: 1 !important;
         }
-        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked),
-        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) p {
-            color: white !important;
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) {
+            background: linear-gradient(135deg, #1E5A8A 0%, #0A3B5E 100%) !important;
+            border-color: #0A3B5E !important;
+            box-shadow: 0 4px 12px rgba(30,90,138,0.4) !important;
+        }
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) p,
+        [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label:has(input:checked) span {
+            color: #FFFFFF !important;
+            font-weight: 700 !important;
+        }
+        /* Info user di bawah sidebar */
+        [data-testid="stSidebar"] [data-testid="stMarkdown"] div {
+            color: #0A3B5E !important;
         }
     }
 
@@ -332,18 +375,24 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Password visibility toggle → ikon mata SVG inline, teks "visibility" disembunyikan total */
-    .stTextInput div[data-baseweb="input"] button,
-    [data-testid="stPasswordVisibilityToggleButton"] {
+    /* Password visibility toggle → ikon mata SVG, teks "visibility" dibuang total */
+    [data-testid="stPasswordVisibilityToggleButton"],
+    .stTextInput button[title*="visibility" i],
+    .stTextInput button[aria-label*="visibility" i],
+    .stTextInput button[kind="secondary"],
+    .stTextInput div[data-baseweb="input"] > div:last-child > button,
+    .stTextInput div[data-baseweb="input"] > button {
         padding: 0 !important;
         min-width: 36px !important;
         width: 36px !important;
         height: 36px !important;
+        box-sizing: border-box !important;
         font-size: 0 !important;
         line-height: 0 !important;
         color: transparent !important;
         text-indent: -9999px !important;
         overflow: hidden !important;
+        white-space: nowrap !important;
         background-color: transparent !important;
         background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>") !important;
         background-repeat: no-repeat !important;
@@ -351,12 +400,43 @@ st.markdown(
         background-size: 22px 22px !important;
         border: none !important;
     }
-    .stTextInput div[data-baseweb="input"] button *,
-    [data-testid="stPasswordVisibilityToggleButton"] * {
+    [data-testid="stPasswordVisibilityToggleButton"] *,
+    .stTextInput button[title*="visibility" i] *,
+    .stTextInput button[aria-label*="visibility" i] *,
+    .stTextInput div[data-baseweb="input"] > div:last-child > button *,
+    .stTextInput div[data-baseweb="input"] > button * {
         display: none !important;
         visibility: hidden !important;
         font-size: 0 !important;
         color: transparent !important;
+        width: 0 !important;
+        height: 0 !important;
+        max-width: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* File uploader — kecilkan ukuran teks dan tombol supaya tidak melebihi kotak */
+    [data-testid="stFileUploaderDropzone"] {
+        padding: 0.8rem !important;
+        min-height: auto !important;
+    }
+    [data-testid="stFileUploaderDropzone"] button,
+    [data-testid="stFileUploaderDropzone"] small,
+    [data-testid="stFileUploaderDropzone"] span,
+    [data-testid="stFileUploaderDropzone"] div {
+        font-size: 0.85rem !important;
+    }
+    [data-testid="stFileUploaderDropzone"] button {
+        padding: 0.45rem 1rem !important;
+        font-size: 0.82rem !important;
+        white-space: nowrap !important;
+    }
+    [data-testid="stFileUploaderDropzone"] section {
+        padding: 0.6rem !important;
+    }
+    [data-testid="stFileUploaderFileName"] {
+        font-size: 0.82rem !important;
     }
 
     /* Input & selectbox modern */
