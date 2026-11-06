@@ -332,17 +332,18 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Password visibility toggle → ikon mata SVG inline, teks disembunyikan
-       Hanya target password toggle; jangan mengganggu tombol lain seperti file upload */
-    [data-testid="stPasswordVisibilityToggleButton"],
-    button[kind="headerNoPadding"][data-testid*="PasswordVisibility" i],
-    .stTextInput button[data-testid*="Password" i] {
+    /* Password visibility toggle → ikon mata SVG inline, teks "visibility" disembunyikan total */
+    .stTextInput div[data-baseweb="input"] button,
+    [data-testid="stPasswordVisibilityToggleButton"] {
         padding: 0 !important;
         min-width: 36px !important;
         width: 36px !important;
         height: 36px !important;
         font-size: 0 !important;
+        line-height: 0 !important;
         color: transparent !important;
+        text-indent: -9999px !important;
+        overflow: hidden !important;
         background-color: transparent !important;
         background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>") !important;
         background-repeat: no-repeat !important;
@@ -350,8 +351,12 @@ st.markdown(
         background-size: 22px 22px !important;
         border: none !important;
     }
+    .stTextInput div[data-baseweb="input"] button *,
     [data-testid="stPasswordVisibilityToggleButton"] * {
         display: none !important;
+        visibility: hidden !important;
+        font-size: 0 !important;
+        color: transparent !important;
     }
 
     /* Input & selectbox modern */
@@ -782,25 +787,46 @@ def riwayat_unggahan() -> pd.DataFrame:
             return pd.DataFrame()
 
 
-def batalkan_unggahan(id_riwayat: int, id_awal, id_akhir, nama_tabel_ulasan: str = "ulasan") -> tuple:
+def batalkan_unggahan(id_riwayat: int, id_awal, id_akhir, jumlah_baris=None, nama_tabel_ulasan: str = "ulasan") -> tuple:
     """Hapus data fact_sentimen + ulasan yang berasal dari unggahan ini.
     Return (sukses, pesan)."""
-    if id_awal is None or id_akhir is None or int(id_awal) > int(id_akhir):
+    # Fallback: kalau id_awal/akhir NULL (upload lama tanpa tracking), coba hapus N id_ulasan terbaru
+    if (id_awal is None or id_akhir is None) and jumlah_baris:
+        try:
+            n = int(jumlah_baris)
+            if n > 0:
+                # Ambil N id_ulasan terbaru sebagai estimasi
+                df_ids = kueri(f"SELECT id_ulasan FROM {nama_tabel_ulasan} ORDER BY id_ulasan DESC LIMIT %s", (n,))
+                if not df_ids.empty:
+                    ids = tuple(int(x) for x in df_ids["id_ulasan"].tolist())
+                    if len(ids) == 1:
+                        eksekusi("DELETE FROM fact_sentimen WHERE id_ulasan = %s", (ids[0],))
+                        eksekusi(f"DELETE FROM {nama_tabel_ulasan} WHERE id_ulasan = %s", (ids[0],))
+                    else:
+                        eksekusi("DELETE FROM fact_sentimen WHERE id_ulasan IN %s", (ids,))
+                        eksekusi(f"DELETE FROM {nama_tabel_ulasan} WHERE id_ulasan IN %s", (ids,))
+                    eksekusi(
+                        "UPDATE riwayat_pelatihan SET status = 'Dibatalkan', "
+                        "catatan = COALESCE(catatan,'') || ' | Data unggahan dihapus (fallback: N terbaru).' "
+                        "WHERE id = %s", (int(id_riwayat),),
+                    )
+                    return True, f"Berhasil menghapus {len(ids)} ulasan terbaru dan menandai Dibatalkan."
+        except Exception as e:
+            return False, f"Gagal fallback batalkan: {e}"
+    if id_awal is None or id_akhir is None:
         try:
             eksekusi(
                 "UPDATE riwayat_pelatihan SET status = 'Dibatalkan', "
                 "catatan = COALESCE(catatan,'') || ' | Dihapus dari riwayat (tidak ada data terkait).' "
                 "WHERE id = %s", (int(id_riwayat),),
             )
-            return True, "Entri riwayat ditandai Dibatalkan."
+            return True, "Entri riwayat ditandai Dibatalkan (data tidak ada / tidak bisa dilacak)."
         except Exception as e:
             return False, f"Gagal memperbarui riwayat: {e}"
     try:
         awal, akhir = int(id_awal), int(id_akhir)
-        # Hapus dari fact_sentimen dulu (karena id_ulasan FK ke ulasan)
         eksekusi("DELETE FROM fact_sentimen WHERE id_ulasan BETWEEN %s AND %s", (awal, akhir))
         eksekusi(f"DELETE FROM {nama_tabel_ulasan} WHERE id_ulasan BETWEEN %s AND %s", (awal, akhir))
-        # Tandai riwayat sebagai Dibatalkan
         eksekusi(
             "UPDATE riwayat_pelatihan SET status = 'Dibatalkan', "
             "catatan = COALESCE(catatan,'') || ' | Data unggahan dihapus oleh Admin.' "
@@ -1369,7 +1395,8 @@ def halaman_admin(user: dict) -> None:
                 if r["status"] != "Dibatalkan":
                     id_r = int(r["id"])
                     if kolom[8].button("Batalkan", key=f"batal_{id_r}", use_container_width=True):
-                        sukses, pesan = batalkan_unggahan(id_r, r["id_awal"], r["id_akhir"])
+                        sukses, pesan = batalkan_unggahan(id_r, r["id_awal"], r["id_akhir"],
+                                                          jumlah_baris=r.get("jumlah_baris"))
                         if sukses:
                             st.success(pesan)
                             riwayat_unggahan.clear()
