@@ -169,55 +169,35 @@ st.markdown(
         cursor: pointer;
     }
 
-    /* Bottom navigation bar untuk mobile — default disembunyikan */
-    .bottom-nav-mobile-wrapper {display: none;}
-    .bottom-nav-mobile-wrapper + div button {
-        white-space: pre-line !important;
-    }
+    /* Bottom nav mobile — DESKTOP: SEMBUNYIKAN TOTAL via container key */
+    .st-key-bottom_nav_mobile_container {display: none !important;}
 
-    /* Mobile: sembunyikan sidebar sepenuhnya, tampilkan bottom nav */
+    /* Mobile only: tampilkan bottom nav, sembunyikan sidebar */
     @media (max-width: 768px) {
-        /* Sembunyikan sidebar dan tombol collapse-nya */
         [data-testid="stSidebar"],
         [data-testid="collapsedControl"],
         [data-testid="stSidebarCollapsedControl"],
         [data-testid="stSidebarCollapseButton"] {
             display: none !important;
         }
-        /* Padding bawah supaya konten tidak tertutup bottom nav */
-        .block-container {
-            padding-bottom: 6rem !important;
-        }
-        /* Tampilkan bottom nav wrapper */
-        .bottom-nav-mobile-wrapper {
+        .block-container {padding-bottom: 6rem !important;}
+        .st-key-bottom_nav_mobile_container {
             display: block !important;
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            background: #FFFFFF;
-            border-top: 1px solid #E2E8F0;
-            padding: 0.4rem 0.4rem 0.6rem 0.4rem;
-            z-index: 99999;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-        }
-        /* Columns setelah bottom-nav-wrapper diposisikan fixed */
-        .bottom-nav-mobile-wrapper ~ div[data-testid="stHorizontalBlock"]:last-of-type,
-        .bottom-nav-mobile-wrapper + div {
             position: fixed !important;
-            bottom: 0.5rem !important;
+            bottom: 0 !important;
             left: 0 !important; right: 0 !important;
-            z-index: 999999 !important;
             background: #FFFFFF !important;
-            padding: 0.5rem 0.4rem !important;
-            border-top: 1px solid #E2E8F0;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+            border-top: 1px solid #E2E8F0 !important;
+            padding: 0.4rem 0.4rem 0.6rem 0.4rem !important;
+            z-index: 99999 !important;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.08) !important;
             margin: 0 !important;
         }
-        /* Styling tombol bottom nav */
-        .bottom-nav-mobile-wrapper + div button {
+        .st-key-bottom_nav_mobile_container button {
             background: transparent !important;
             border: none !important;
             color: #64748B !important;
-            padding: 0.4rem 0.2rem !important;
+            padding: 0.5rem 0.2rem !important;
             font-size: 0.72rem !important;
             font-weight: 500 !important;
             line-height: 1.3 !important;
@@ -225,14 +205,10 @@ st.markdown(
             box-shadow: none !important;
             min-height: 54px;
         }
-        .bottom-nav-mobile-wrapper + div button:hover {
-            background: #F1F5F9 !important;
-            color: #1E5A8A !important;
-            transform: none !important;
-        }
-        .bottom-nav-mobile-wrapper + div button p {
+        .st-key-bottom_nav_mobile_container button p {
             font-size: 0.72rem !important;
             line-height: 1.3 !important;
+            margin: 0 !important;
         }
     }
 
@@ -2229,8 +2205,13 @@ def aplikasi_utama() -> None:
     elif pilihan == "Performa Algoritma": halaman_performa()
     elif pilihan == "Admin": halaman_admin(user)
 
-    # Bottom navigation bar (hanya tampil di mobile via CSS)
-    render_bottom_nav_mobile(opsi, pilihan)
+    # Bottom navigation bar — hanya render di mobile (dibungkus dengan container key)
+    try:
+        with st.container(key="bottom_nav_mobile_container"):
+            render_bottom_nav_mobile(opsi, pilihan)
+    except TypeError:
+        # Streamlit lama yang tidak support key pada container
+        render_bottom_nav_mobile(opsi, pilihan)
 
 
 def main() -> None:
