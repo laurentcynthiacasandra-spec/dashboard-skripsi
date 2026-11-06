@@ -50,9 +50,14 @@ def warna_aplikasi(nama: str) -> str:
     return X_COLOR
 
 
-# CSS modern
-st.markdown(
-    """
+# CSS modern — pakai st.html supaya tidak kena sanitize markdown
+try:
+    _css_render = st.html
+except AttributeError:
+    def _css_render(txt):
+        st.markdown(txt, unsafe_allow_html=True)
+
+_css_render("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -485,9 +490,7 @@ st.markdown(
         font-weight: 500; color: #475569; font-size: 0.85rem;
     }
     </style>
-    """,
-    unsafe_allow_html=True,
-)
+""")
 
 
 # ---------------------------------------------------------------------------
