@@ -400,31 +400,16 @@ _css_render("""
         color: #FFFFFF !important;
     }
 
-    /* Password visibility toggle → emoji mata via pseudo-element */
-    [data-testid="stPasswordVisibilityToggleButton"] {
-        font-size: 0 !important;
-        color: transparent !important;
-        width: 38px !important;
-        height: 38px !important;
-        min-width: 38px !important;
-        padding: 0 !important;
-        background: transparent !important;
-        border: none !important;
-        position: relative !important;
-        overflow: hidden !important;
-    }
-    [data-testid="stPasswordVisibilityToggleButton"]::before {
-        content: '👁' !important;
-        font-size: 18px !important;
-        color: #64748B !important;
-        position: absolute !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif !important;
-    }
-    [data-testid="stPasswordVisibilityToggleButton"] * {
+    /* Password visibility toggle button → sembunyikan total (biar tidak ada "visibili") */
+    [data-testid="stPasswordVisibilityToggleButton"],
+    button[aria-label*="password" i],
+    button[aria-label*="visibility" i],
+    .stTextInput div[data-baseweb="input"] button {
         display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        visibility: hidden !important;
+        overflow: hidden !important;
     }
 
     /* File uploader — kecilkan ukuran teks dan tombol supaya tidak melebihi kotak */
@@ -938,17 +923,29 @@ def daftar_pengguna() -> pd.DataFrame:
 # Komponen
 # ---------------------------------------------------------------------------
 def page_title(judul: str, subjudul: str = "") -> None:
-    st.markdown(f'<div class="page-title">{judul}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="color:#0A3B5E; font-size:1.75rem; font-weight:700; '
+        f'margin:0 0 0.3rem 0; letter-spacing:-0.02em;">{judul}</div>',
+        unsafe_allow_html=True,
+    )
     if subjudul:
-        st.markdown(f'<div class="page-subtitle">{subjudul}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="color:#64748B; font-size:0.95rem; margin-bottom:1.2rem;">{subjudul}</div>',
+            unsafe_allow_html=True,
+        )
 
 
 def metrik_kecil(label: str, nilai: str, sub: str = "") -> None:
+    # Inline style supaya pasti applied walau CSS class tidak loading
     st.markdown(
-        f'<div class="metrik-kecil">'
-        f'<div class="metrik-kecil-label">{label}</div>'
-        f'<div class="metrik-kecil-nilai">{nilai}</div>'
-        f'<div class="metrik-kecil-sub">{sub or "&nbsp;"}</div>'
+        f'<div style="background:#FFFFFF; padding:1rem 1.1rem; border-radius:12px; '
+        f'border:1px solid #E2E8F0; position:relative; overflow:hidden; '
+        f'border-top:3px solid #1E5A8A; margin-bottom:0.5rem;">'
+        f'<div style="color:#64748B; font-size:0.73rem; font-weight:600; '
+        f'text-transform:uppercase; letter-spacing:0.4px;">{label}</div>'
+        f'<div style="font-size:1.5rem; font-weight:700; color:#0A3B5E; '
+        f'margin-top:0.3rem; line-height:1.1;">{nilai}</div>'
+        f'<div style="color:#94A3B8; font-size:0.78rem; margin-top:0.2rem;">{sub or "&nbsp;"}</div>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -983,7 +980,11 @@ def kartu(judul: str = ""):
     """Membungkus semua komponen Streamlit di dalamnya sebagai satu kartu."""
     with st.container(border=True):
         if judul:
-            st.markdown(f'<div class="kartu-judul">{judul}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="color:#0A3B5E; font-weight:700; font-size:1.05rem; '
+                f'margin-bottom:1rem; letter-spacing:-0.01em;">{judul}</div>',
+                unsafe_allow_html=True,
+            )
         yield
 
 
