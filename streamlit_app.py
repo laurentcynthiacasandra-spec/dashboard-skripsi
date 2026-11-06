@@ -1350,6 +1350,14 @@ def halaman_admin(user: dict) -> None:
         if st.button("Tutup pesan error", key="tutup_err"):
             st.session_state.pop("last_upload_error", None)
             st.rerun()
+    # Tombol clear cache supaya admin bisa force refresh kalau schema DB berubah
+    cols_act = st.columns([3, 1])
+    with cols_act[1]:
+        if st.button("Bersihkan cache", use_container_width=True, help="Force refresh model + data cache"):
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            st.success("Cache dibersihkan.")
+            st.rerun()
     data = ringkasan_global()
 
     with kartu("Unggah Data Ulasan Baru"):
@@ -1597,7 +1605,8 @@ def _pastikan_tabel_ulasan() -> tuple:
 
 
 @st.cache_resource(show_spinner="Melatih model pada data yang ada (sekali per sesi)...")
-def latih_model_per_aplikasi(nama_aplikasi: str):
+def latih_model_per_aplikasi(nama_aplikasi: str, cache_key: str = ""):
+    """cache_key bisa diubah untuk invalidate cache saat schema berubah."""
     """Latih TF-IDF + ComplementNB + LinearSVC dari data pelabelan yang sudah ada di DB.
     Return (vec, nb, svm). Kalau tabel ulasan tidak tersedia, return (None, None, None).
     """
@@ -1768,7 +1777,9 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
         return
 
     prog.progress(0.5, text=f"Melatih / memuat model untuk {aplikasi}...")
-    vec, nb, svm = latih_model_per_aplikasi(aplikasi)
+    # Cache key berdasar schema aktual supaya auto-invalidate jika tabel berubah
+    cache_key = f"{nama_tabel_ulasan}:{kolom_teks_ulasan}"
+    vec, nb, svm = latih_model_per_aplikasi(aplikasi, cache_key)
     if vec is None:
         # Fallback: tabel ulasan tidak tersedia atau data latih kurang.
         # Pakai label hybrid sebagai prediksi dua model (artinya prediksi == label).
@@ -1830,8 +1841,11 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     except Exception:
         kol_ulasan = {kolom_teks_ulasan, "id_ulasan"}
 
-    # Hitung next_id untuk tabel yang mungkin punya sequence out-of-sync
-    next_id_ulasan = _max_id(nama_tabel_ulasan, "id_ulasan") + 1
+    # Hitung next_id DARI KEDUA tabel supaya tidak konflik dengan id_ulasan di fact_sentimen asli
+    # (kalau pipeline lama tidak pakai tabel ulasan, id_ulasan di fact bisa 1..N tanpa ada di tabel ulasan)
+    max_ulasan = _max_id(nama_tabel_ulasan, "id_ulasan")
+    max_fact_u = _max_id("fact_sentimen", "id_ulasan")
+    next_id_ulasan = max(max_ulasan, max_fact_u) + 1
     id_ulasan_awal = next_id_ulasan  # untuk rollback nanti
     kol_pk_fakta = None
     for kandidat in ("id_fact", "id_fakta", "id_fact_sentimen"):
@@ -1902,8 +1916,9 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
                 except Exception: pass
                 conn = get_conn()
                 cur = conn.cursor()
-                # Refresh next_id setelah rollback
-                next_id_ulasan = _max_id(nama_tabel_ulasan, "id_ulasan") + 1
+                # Refresh next_id setelah rollback — tetap pakai MAX dari kedua tabel
+                next_id_ulasan = max(_max_id(nama_tabel_ulasan, "id_ulasan"),
+                                      _max_id("fact_sentimen", "id_ulasan")) + 1
                 if kol_pk_fakta:
                     next_id_fakta = _max_id("fact_sentimen", kol_pk_fakta) + 1
     try: conn.commit()
