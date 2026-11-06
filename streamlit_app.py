@@ -1491,16 +1491,26 @@ def id_aplikasi_dari_nama(nama: str) -> int:
     return int(df.iloc[0]["id_aplikasi"]) if not df.empty else None
 
 
+def _max_id(tabel: str, kolom: str) -> int:
+    """Ambil MAX(kolom) dari tabel, atau 0 kalau kosong/tabel tidak ada."""
+    try:
+        df = kueri(f"SELECT COALESCE(MAX({kolom}), 0) AS mx FROM {tabel}")
+        return int(df.iloc[0]["mx"])
+    except Exception:
+        return 0
+
+
 def ambil_atau_buat_id_waktu(tgl) -> int:
     df = kueri("SELECT id_waktu FROM dim_waktu WHERE tanggal = %s LIMIT 1", (tgl,))
     if not df.empty: return int(df.iloc[0]["id_waktu"])
+    # Pakai MAX+1 supaya tidak bentrok dengan sequence yang mungkin out-of-sync
+    new_id = _max_id("dim_waktu", "id_waktu") + 1
     conn = get_conn()
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO dim_waktu (tanggal, bulan, tahun) VALUES (%s, %s, %s) RETURNING id_waktu",
-            (tgl, tgl.month, tgl.year),
+            "INSERT INTO dim_waktu (id_waktu, tanggal, bulan, tahun) VALUES (%s, %s, %s, %s)",
+            (new_id, tgl, tgl.month, tgl.year),
         )
-        new_id = int(cur.fetchone()[0])
     conn.commit()
     return new_id
 
@@ -1660,6 +1670,14 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     except Exception:
         kol_ulasan = {kolom_teks_ulasan, "id_ulasan"}
 
+    # Hitung next_id untuk tabel yang mungkin punya sequence out-of-sync
+    next_id_ulasan = _max_id(nama_tabel_ulasan, "id_ulasan") + 1
+    kol_pk_fakta = None
+    for kandidat in ("id_fact", "id_fakta", "id_fact_sentimen"):
+        if kandidat in kol_fakta:
+            kol_pk_fakta = kandidat; break
+    next_id_fakta = (_max_id("fact_sentimen", kol_pk_fakta) + 1) if kol_pk_fakta else None
+
     conn = get_conn()
     gagal = 0
     pesan_error_pertama = None
@@ -1673,8 +1691,9 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
             try:
                 id_w = waktu_id(row["at"])
 
-                # Insert ke tabel ulasan — bangun kolom yang ada saja
-                kol_u = [kolom_teks_ulasan]; nilai_u = [row["content"]]
+                # Insert ke tabel ulasan — eksplisit pakai id_ulasan
+                kol_u = ["id_ulasan", kolom_teks_ulasan]
+                nilai_u = [next_id_ulasan, row["content"]]
                 if "score" in kol_ulasan:
                     kol_u.append("score"); nilai_u.append(int(row["score"]))
                 if "at_date" in kol_ulasan:
@@ -1683,14 +1702,19 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
                     kol_u.append("tanggal"); nilai_u.append(row["at"])
                 if "content_bersih" in kol_ulasan and kolom_teks_ulasan != "content_bersih":
                     kol_u.append("content_bersih"); nilai_u.append(row["content_bersih"])
-                sql_u = f"INSERT INTO {nama_tabel_ulasan} ({', '.join(kol_u)}) VALUES ({', '.join(['%s']*len(nilai_u))}) RETURNING id_ulasan"
+                sql_u = f"INSERT INTO {nama_tabel_ulasan} ({', '.join(kol_u)}) VALUES ({', '.join(['%s']*len(nilai_u))})"
                 cur.execute(sql_u, tuple(nilai_u))
-                id_u = int(cur.fetchone()[0])
+                id_u = next_id_ulasan
+                next_id_ulasan += 1
 
-                # Insert ke fact_sentimen (2 baris: NB + SVM)
+                # Insert ke fact_sentimen (2 baris: NB + SVM) — eksplisit pakai PK
                 for id_mod_cur, id_pred_cur in [(id_nb, id_pred_nb), (id_svm, id_pred_svm)]:
-                    kolom = ["id_ulasan", "id_aplikasi", "id_waktu", "id_model", "id_sentimen", "id_sentimen_prediksi"]
-                    nilai = [id_u, id_app, id_w, id_mod_cur, id_label, id_pred_cur]
+                    kolom = []; nilai = []
+                    if kol_pk_fakta:
+                        kolom.append(kol_pk_fakta); nilai.append(next_id_fakta)
+                        next_id_fakta += 1
+                    kolom += ["id_ulasan", "id_aplikasi", "id_waktu", "id_model", "id_sentimen", "id_sentimen_prediksi"]
+                    nilai += [id_u, id_app, id_w, id_mod_cur, id_label, id_pred_cur]
                     if pakai_prediksi_benar:
                         kolom.append("prediksi_benar"); nilai.append(id_label == id_pred_cur)
                     if pakai_data_uji:
@@ -1711,6 +1735,10 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
                 except Exception: pass
                 conn = get_conn()
                 cur = conn.cursor()
+                # Refresh next_id setelah rollback
+                next_id_ulasan = _max_id(nama_tabel_ulasan, "id_ulasan") + 1
+                if kol_pk_fakta:
+                    next_id_fakta = _max_id("fact_sentimen", kol_pk_fakta) + 1
     try: conn.commit()
     except Exception: pass
 
