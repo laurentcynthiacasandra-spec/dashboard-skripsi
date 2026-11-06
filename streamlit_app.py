@@ -112,67 +112,72 @@ st.markdown(
     }
     [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label > div:first-child {display: none !important;}
 
-    /* Sidebar collapse/expand button — ganti teks ligature "keyboard_double_arrow_left" jadi ikon SVG */
+    /* Sidebar collapse button DI DALAM sidebar (tombol tutup) — ganti ikon chevron kiri */
     [data-testid="stSidebarCollapseButton"] button,
-    [data-testid="stSidebarCollapsedControl"] button,
-    [data-testid="collapsedControl"] button,
-    [data-testid="stSidebar"] button[kind="headerNoPadding"] {
+    [data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"] {
         font-size: 0 !important;
         line-height: 0 !important;
         color: transparent !important;
         text-indent: -9999px !important;
-        width: 38px !important;
-        height: 38px !important;
-        min-width: 38px !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
         padding: 0 !important;
         overflow: hidden !important;
-        background-color: #FFFFFF !important;
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%231E5A8A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='15 18 9 12 15 6'/></svg>") !important;
+        background-color: #F1F5F9 !important;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%231E5A8A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='15 18 9 12 15 6'/></svg>") !important;
         background-repeat: no-repeat !important;
         background-position: center !important;
-        background-size: 20px 20px !important;
+        background-size: 18px 18px !important;
         border: 1px solid #E2E8F0 !important;
         border-radius: 8px !important;
     }
-    [data-testid="stSidebarCollapseButton"] button *,
-    [data-testid="stSidebarCollapsedControl"] button *,
-    [data-testid="collapsedControl"] button *,
-    [data-testid="stSidebar"] button[kind="headerNoPadding"] * {
+    [data-testid="stSidebarCollapseButton"] button * {
         display: none !important;
         visibility: hidden !important;
     }
 
-    /* Tombol untuk membuka sidebar saat tertutup — selalu VISIBLE */
+    /* Tombol hamburger buka sidebar — super visible, pojok kiri atas */
     [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapsedControl"],
-    section[data-testid="stSidebar"][aria-expanded="false"] + div button:first-child {
-        display: flex !important; align-items: center; justify-content: center;
-        opacity: 1 !important; visibility: visible !important;
-        position: fixed !important; top: 0.8rem !important; left: 0.8rem !important;
+    [data-testid="stSidebarCollapsedControl"] {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        position: fixed !important;
+        top: 0.8rem !important;
+        left: 0.8rem !important;
         z-index: 999999 !important;
-        width: 42px !important; height: 42px !important;
-        background: linear-gradient(135deg, #1E5A8A 0%, #0A3B5E 100%) !important;
-        border: none !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-        cursor: pointer;
+        background: transparent !important;
     }
     [data-testid="collapsedControl"] button,
     [data-testid="stSidebarCollapsedControl"] button {
-        width: 100% !important; height: 100% !important;
-        background-color: transparent !important;
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>") !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        padding: 0 !important;
+        background-color: #1E5A8A !important;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>') !important;
         background-repeat: no-repeat !important;
         background-position: center !important;
-        background-size: 22px 22px !important;
-        border: none !important;
+        background-size: 24px 24px !important;
+        border: 2px solid white !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.25) !important;
         font-size: 0 !important;
         color: transparent !important;
+        cursor: pointer;
     }
     [data-testid="collapsedControl"] button:hover,
     [data-testid="stSidebarCollapsedControl"] button:hover {
-        background-color: rgba(255,255,255,0.1) !important;
+        background-color: #0A3B5E !important;
+        transform: scale(1.05);
     }
+    [data-testid="collapsedControl"] button *,
+    [data-testid="stSidebarCollapsedControl"] button * {
+        display: none !important;
+    }
+
+    /* (Bottom nav mobile dihapus — pakai sidebar untuk semua ukuran layar) */
 
     /* Mobile responsive — sidebar teks jelas, background lebih kontras */
     @media (max-width: 768px) {
@@ -375,45 +380,45 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Password visibility toggle → ikon mata SVG, teks "visibility" dibuang total */
+    /* Password visibility toggle → emoji mata via pseudo-element, teks "visibility" disembunyikan */
     [data-testid="stPasswordVisibilityToggleButton"],
-    .stTextInput button[title*="visibility" i],
-    .stTextInput button[aria-label*="visibility" i],
-    .stTextInput button[kind="secondary"],
-    .stTextInput div[data-baseweb="input"] > div:last-child > button,
-    .stTextInput div[data-baseweb="input"] > button {
-        padding: 0 !important;
-        min-width: 36px !important;
-        width: 36px !important;
-        height: 36px !important;
-        box-sizing: border-box !important;
+    .stTextInput div[data-baseweb="input"] button,
+    div[data-baseweb="input"] button {
         font-size: 0 !important;
-        line-height: 0 !important;
         color: transparent !important;
-        text-indent: -9999px !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-        background-color: transparent !important;
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>") !important;
-        background-repeat: no-repeat !important;
-        background-position: center !important;
-        background-size: 22px 22px !important;
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        padding: 0 !important;
+        background: transparent !important;
         border: none !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    [data-testid="stPasswordVisibilityToggleButton"]::before,
+    .stTextInput div[data-baseweb="input"] button::before,
+    div[data-baseweb="input"] button::before {
+        content: '👁' !important;
+        font-size: 18px !important;
+        line-height: 38px !important;
+        color: #64748B !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif !important;
     }
     [data-testid="stPasswordVisibilityToggleButton"] *,
-    .stTextInput button[title*="visibility" i] *,
-    .stTextInput button[aria-label*="visibility" i] *,
-    .stTextInput div[data-baseweb="input"] > div:last-child > button *,
-    .stTextInput div[data-baseweb="input"] > button * {
+    .stTextInput div[data-baseweb="input"] button > *,
+    div[data-baseweb="input"] button > * {
         display: none !important;
         visibility: hidden !important;
         font-size: 0 !important;
-        color: transparent !important;
-        width: 0 !important;
-        height: 0 !important;
-        max-width: 0 !important;
-        max-height: 0 !important;
-        overflow: hidden !important;
     }
 
     /* File uploader — kecilkan ukuran teks dan tombol supaya tidak melebihi kotak */
