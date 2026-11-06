@@ -368,16 +368,31 @@ st.markdown(
         transition: all 0.15s ease;
     }
     .stButton > button[kind="primary"],
-    .stForm button[kind="primaryFormSubmit"] {
+    .stForm button[kind="primaryFormSubmit"],
+    .stForm button[kind="primary"],
+    [data-testid="stFormSubmitButton"] button,
+    .stFormSubmitButton button,
+    button[data-testid="baseButton-primaryFormSubmit"],
+    button[data-testid*="primaryForm"],
+    form button[type="submit"] {
         background: linear-gradient(135deg, #1E5A8A 0%, #0A3B5E 100%) !important;
-        border: none !important; color: white !important;
+        background-color: #1E5A8A !important;
+        border: none !important;
+        color: #FFFFFF !important;
         box-shadow: 0 2px 8px rgba(30,90,138,0.2);
     }
     .stButton > button[kind="primary"]:hover,
-    .stForm button[kind="primaryFormSubmit"]:hover {
+    .stForm button[kind="primaryFormSubmit"]:hover,
+    .stForm button[kind="primary"]:hover,
+    [data-testid="stFormSubmitButton"] button:hover,
+    .stFormSubmitButton button:hover,
+    button[data-testid="baseButton-primaryFormSubmit"]:hover,
+    form button[type="submit"]:hover {
         background: linear-gradient(135deg, #0A3B5E 0%, #062843 100%) !important;
+        background-color: #0A3B5E !important;
         box-shadow: 0 4px 14px rgba(30,90,138,0.3);
         transform: translateY(-1px);
+        color: #FFFFFF !important;
     }
 
     /* Password visibility toggle → emoji mata via pseudo-element */
@@ -2050,10 +2065,15 @@ def halaman_login() -> None:
     col_kiri, col_tengah, col_kanan = st.columns([0.5, 2, 0.5])
     with col_tengah:
         st.markdown(
-            '<div class="login-header">'
-            '<div class="login-logo">📊</div>'
-            '<div class="login-title">Dashboard Analisis Sentimen</div>'
-            '<div class="login-subtitle">Instagram, TikTok, dan X · Google Play Store</div>'
+            '<div style="text-align:center; padding:1rem 0 1.2rem 0;">'
+            '<div style="display:inline-flex; align-items:center; justify-content:center; '
+            'width:56px; height:56px; border-radius:14px; '
+            'background:linear-gradient(135deg, #1E5A8A 0%, #0A3B5E 100%); '
+            'color:white; font-size:1.8rem; margin-bottom:0.8rem; '
+            'box-shadow:0 8px 20px rgba(30,90,138,0.25);">📊</div>'
+            '<div style="color:#0A3B5E; font-size:1.55rem; font-weight:800; '
+            'margin:0 0 0.4rem 0; letter-spacing:-0.02em;">Dashboard Analisis Sentimen</div>'
+            '<div style="color:#64748B; font-size:0.92rem;">Instagram, TikTok, dan X · Google Play Store</div>'
             '</div>',
             unsafe_allow_html=True,
         )
