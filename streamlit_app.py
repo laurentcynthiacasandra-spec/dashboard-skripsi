@@ -169,8 +169,6 @@ st.markdown(
         cursor: pointer;
     }
 
-    /* (Bottom nav mobile dihapus — pakai sidebar untuk semua ukuran layar) */
-
     /* Mobile responsive — sidebar teks jelas, background lebih kontras */
     @media (max-width: 768px) {
         [data-testid="stSidebar"] {
@@ -374,15 +372,11 @@ st.markdown(
 
     /* Password visibility toggle → ikon mata SVG, teks "visibility" dibuang total */
     [data-testid="stPasswordVisibilityToggleButton"],
-    [data-testid="textInputRootElement"] + button,
     .stTextInput button[title*="visibility" i],
     .stTextInput button[aria-label*="visibility" i],
     .stTextInput button[kind="secondary"],
     .stTextInput div[data-baseweb="input"] > div:last-child > button,
-    .stTextInput div[data-baseweb="input"] > button,
-    div[data-baseweb="input"] button[type="button"]:not([data-testid]),
-    input[type="password"] ~ button,
-    input[type="password"] + button {
+    .stTextInput div[data-baseweb="input"] > button {
         padding: 0 !important;
         min-width: 36px !important;
         width: 36px !important;
