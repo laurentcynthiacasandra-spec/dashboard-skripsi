@@ -963,33 +963,30 @@ def metrik_kecil(label: str, nilai: str, sub: str = "", warna_aksen: str = "#1E5
 def kartu_aplikasi(nama: str, positif: int, negatif: int, total: int) -> None:
     pct = (positif / total * 100) if total else 0
     warna = warna_aplikasi(nama)
-    warna_tint = warna + "12"  # tint muda
+    warna_tint = warna + "10"
     pct_str = f"{pct:.1f}%".replace(".", ",")
     pos_str = f"{positif:,}".replace(",", ".")
     neg_str = f"{negatif:,}".replace(",", ".")
     tot_str = f"{total:,}".replace(",", ".")
     st.markdown(
-        f'<div style="background:#FFFFFF; padding:1.4rem 1.3rem; border-radius:14px; '
-        f'border:1px solid #E2E8F0; border-left:6px solid {warna}; '
-        f'box-shadow:0 2px 8px rgba(0,0,0,0.04); min-height:220px; '
+        f'<div style="background:#FFFFFF; padding:0.9rem 1rem; border-radius:12px; '
+        f'border:1px solid #E2E8F0; border-left:4px solid {warna}; '
         f'background-image:linear-gradient(135deg, {warna_tint} 0%, transparent 60%);">'
-        f'<div style="font-size:1.4rem; font-weight:800; color:{warna}; '
-        f'margin-bottom:0.6rem; letter-spacing:-0.01em;">{nama}</div>'
-        f'<div style="font-size:2.5rem; font-weight:800; color:{HD_DARK}; '
-        f'line-height:1; margin:0.3rem 0 0.2rem 0; letter-spacing:-0.02em;">{pct_str}</div>'
-        f'<div style="color:#64748B; font-size:0.9rem; font-weight:500; '
-        f'margin-bottom:0.9rem;">positif</div>'
-        f'<div style="display:flex; height:10px; border-radius:5px; overflow:hidden; '
-        f'margin-bottom:0.8rem; background:#F1F5F9;">'
+        f'<div style="font-size:1.05rem; font-weight:700; color:{warna}; '
+        f'margin-bottom:0.3rem;">{nama}</div>'
+        f'<div style="font-size:1.6rem; font-weight:800; color:{HD_DARK}; '
+        f'line-height:1; margin:0.1rem 0;">{pct_str}'
+        f'<span style="font-size:0.8rem; color:#64748B; font-weight:500; margin-left:0.3rem;">positif</span></div>'
+        f'<div style="display:flex; height:6px; border-radius:3px; overflow:hidden; '
+        f'margin:0.5rem 0 0.4rem 0; background:#F1F5F9;">'
         f'<div style="width:{pct}%; background:{POS};"></div>'
         f'<div style="width:{100-pct}%; background:{NEG};"></div>'
         f'</div>'
-        f'<div style="display:flex; justify-content:space-between; font-size:0.82rem; color:#475569;">'
-        f'<span><b style="color:{POS};">{pos_str}</b> positif</span>'
-        f'<span><b style="color:{NEG};">{neg_str}</b> negatif</span>'
+        f'<div style="font-size:0.75rem; color:#64748B;">'
+        f'<b style="color:{POS};">{pos_str}</b> positif · '
+        f'<b style="color:{NEG};">{neg_str}</b> negatif · '
+        f'<span style="color:#94A3B8;">{tot_str} ulasan</span>'
         f'</div>'
-        f'<div style="margin-top:0.4rem; font-size:0.78rem; color:#94A3B8; '
-        f'border-top:1px solid #F1F5F9; padding-top:0.5rem;">Total {tot_str} ulasan</div>'
         f'</div>',
         unsafe_allow_html=True,
     )
