@@ -1777,6 +1777,11 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
         return
 
     prog.progress(0.5, text=f"Melatih / memuat model untuk {aplikasi}...")
+    # Deteksi tabel ulasan dulu (juga dipakai untuk insert nanti)
+    nama_tabel_ulasan, kolom_teks_ulasan = _pastikan_tabel_ulasan()
+    if nama_tabel_ulasan is None:
+        st.error("Tidak bisa menemukan atau membuat tabel 'ulasan' di database.")
+        return
     # Cache key berdasar schema aktual supaya auto-invalidate jika tabel berubah
     cache_key = f"{nama_tabel_ulasan}:{kolom_teks_ulasan}"
     vec, nb, svm = latih_model_per_aplikasi(aplikasi, cache_key)
@@ -1808,13 +1813,7 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
         if tgl not in cache_waktu: cache_waktu[tgl] = ambil_atau_buat_id_waktu(tgl)
         return cache_waktu[tgl]
 
-    # Pastikan tabel ulasan ada (buat otomatis kalau belum)
-    nama_tabel_ulasan, kolom_teks_ulasan = _pastikan_tabel_ulasan()
-    if nama_tabel_ulasan is None:
-        st.error("Tidak bisa menemukan atau membuat tabel 'ulasan' di database. "
-                 "Periksa izin CREATE TABLE pada DATABASE_URL.")
-        return
-
+    # nama_tabel_ulasan & kolom_teks_ulasan sudah di-deteksi di langkah training di atas
     # Cek kolom fact_sentimen yang tersedia
     try:
         df_kol_fakta = kueri(
