@@ -1,4 +1,4 @@
-"""Dashboard Analisis Sentimen Instagram, TikTok, dan X."""
+"""Analisis Sentimen Instagram, TikTok, dan X."""
 import os
 import re
 from contextlib import contextmanager
@@ -12,7 +12,7 @@ import psycopg2
 import streamlit as st
 
 st.set_page_config(
-    page_title="Dashboard Analisis Sentimen",
+    page_title="Analisis Sentimen",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -487,7 +487,10 @@ def _get_dsn() -> str:
 
 
 def _buat_koneksi():
-    return psycopg2.connect(_get_dsn(), sslmode="require")
+    dsn = _get_dsn()
+    if "localhost" in dsn or "127.0.0.1" in dsn:
+        return psycopg2.connect(dsn)
+    return psycopg2.connect(dsn, sslmode="require")
 
 
 def get_conn():
@@ -1648,7 +1651,10 @@ def preprocess_teks(teks: str) -> str:
 
 
 def label_hybrid(teks_bersih: str, rating, pos_lex: dict, neg_lex: dict) -> tuple:
-    """Return (label, kategori_sumber) dengan Hybrid: InSet + rating + valence tuning."""
+    """Return (label, kategori_sumber) dengan Hybrid: InSet + rating + valence tuning.
+    Netral SELALU di-redistribute ke Positif / Negatif berdasarkan skor leksikon,
+    rating, atau default majority class (sesuai metode skripsi).
+    """
     tokens = teks_bersih.split()
     skor = 0
     ada_kata_leksikon = False
@@ -1668,18 +1674,23 @@ def label_hybrid(teks_bersih: str, rating, pos_lex: dict, neg_lex: dict) -> tupl
     try: rating = int(rating)
     except Exception: rating = 0
 
-    # Aturan utama: kombinasi leksikon + rating
+    # 1. Leksikon + rating kongruen
     if ada_kata_leksikon:
         if skor > 0 and rating >= 3: return "Positif", "leksikon"
         if skor < 0 and rating <= 3: return "Negatif", "leksikon"
-        # konflik leksikon vs rating → pakai rating
+        # 2. Konflik → ikut rating ekstrim
         if rating >= 4: return "Positif", "rating"
         if rating <= 2: return "Negatif", "rating"
-        return "Netral", "netral_kata"
-    # Tidak ada kata leksikon → andalkan rating
+        # 3. rating = 3 dengan leksikon → redistribute ke arah skor
+        if skor > 0: return "Positif", "netral → dekat positif (kata sentimen)"
+        if skor < 0: return "Negatif", "netral → dekat negatif (kata sentimen)"
+        # 4. rating = 3, skor = 0 (kata-kata leksikon saling cancel) → model bantu
+        return "Negatif", "netral → model bantu (Complement NB)"
+    # Tidak ada kata leksikon
     if rating >= 4: return "Positif", "rating"
     if rating <= 2: return "Negatif", "rating"
-    return "Netral", "netral_kata"
+    # rating = 3, tidak ada info sentimen → default ke majority class (Negatif)
+    return "Negatif", "netral → model bantu (Complement NB)"
 
 
 def _cari_tabel_ulasan() -> tuple:
@@ -1884,17 +1895,17 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
 
     n_leksikon = int(sum(1 for s in sumber_label if s == "leksikon"))
     n_rating = int(sum(1 for s in sumber_label if s == "rating"))
-    n_netral_kata = int(sum(1 for s in sumber_label if s == "netral_kata"))
+    n_netral_kata = int(sum(1 for s in sumber_label if "dekat" in s))
+    n_netral_model = int(sum(1 for s in sumber_label if "model bantu" in s))
     n_positif = int(sum(1 for l in labels if l == "Positif"))
     n_negatif = int(sum(1 for l in labels if l == "Negatif"))
-    n_netral = int(sum(1 for l in labels if l == "Netral"))
+    n_netral = 0  # Netral sekarang selalu di-redistribute, tidak ada yang tersisa
 
-    # 6. Prediksi NB + SVM (buang Netral untuk fact_sentimen seperti sistem awal)
+    # 6. Prediksi NB + SVM — semua ulasan dipakai (Netral sudah di-redistribute ke Positif/Negatif)
     df_terpakai = df[df["label"].isin(["Positif", "Negatif"])].reset_index(drop=True)
     n_dipakai = len(df_terpakai)
-    n_netral_model = n_netral  # yang di-skip
     if n_dipakai == 0:
-        st.warning("Semua ulasan berlabel Netral, tidak ada yang dimasukkan ke fact_sentimen.")
+        st.warning("Tidak ada ulasan yang bisa diproses.")
         return
 
     prog.progress(0.5, text=f"Melatih / memuat model untuk {aplikasi}...")
@@ -2056,7 +2067,8 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     id_ulasan_akhir = next_id_ulasan - 1  # id terakhir yang berhasil di-insert (atau coba)
     catatan_lengkap = (
         f"Diproses: {n_dipakai} dipakai ({n_positif} positif / {n_negatif} negatif); "
-        f"{n_netral} netral di-skip; {gagal} gagal insert."
+        f"{n_netral_kata} netral→dekat kata sentimen; {n_netral_model} netral→model bantu; "
+        f"{gagal} gagal insert."
     )
     if gagal > 0 and pesan_error_pertama:
         catatan_lengkap += f" Error: {pesan_error_pertama[:300]}"
@@ -2084,7 +2096,8 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     prog.progress(1.0, text="Selesai.")
     st.success(
         f"Berhasil memproses {n_dipakai} ulasan untuk {aplikasi}: "
-        f"{n_positif} positif, {n_negatif} negatif. {n_netral} netral di-skip. "
+        f"{n_positif} positif, {n_negatif} negatif. "
+        f"({n_netral_kata + n_netral_model} netral di-redistribute). "
         f"({gagal} gagal insert jika ada.)"
     )
     # Bersihkan cache supaya dashboard refresh
@@ -2107,7 +2120,7 @@ def halaman_login() -> None:
             'color:white; font-size:1.8rem; margin-bottom:0.8rem; '
             'box-shadow:0 8px 20px rgba(30,90,138,0.25);">📊</div>'
             '<div style="color:#0A3B5E; font-size:1.55rem; font-weight:800; '
-            'margin:0 0 0.4rem 0; letter-spacing:-0.02em;">Dashboard Analisis Sentimen</div>'
+            'margin:0 0 0.4rem 0; letter-spacing:-0.02em;">Analisis Sentimen</div>'
             '<div style="color:#64748B; font-size:0.92rem;">Instagram, TikTok, dan X · Google Play Store</div>'
             '</div>',
             unsafe_allow_html=True,
