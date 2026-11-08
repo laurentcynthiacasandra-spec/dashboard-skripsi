@@ -109,7 +109,7 @@ print(f"Memproses {len(df)} ulasan {APP}...")
 
 # Cari kolom teks bersih — bisa 'stemming', 'stem', atau nama lain
 kol_teks = None
-for kol in ["stemming", "stem", "content_bersih", "normalisasi", "stopword"]:
+for kol in ["clean_text", "stemming", "stem", "content_bersih", "normalisasi", "stopword"]:
     if kol in df.columns:
         kol_teks = kol
         break
