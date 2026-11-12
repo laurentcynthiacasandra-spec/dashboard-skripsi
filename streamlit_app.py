@@ -1,4 +1,4 @@
-"""Analisis Sentimen Instagram, TikTok, dan X."""
+"""Dashboard Analisis Sentimen Instagram, TikTok, dan X."""
 import os
 import re
 from contextlib import contextmanager
@@ -12,7 +12,7 @@ import psycopg2
 import streamlit as st
 
 st.set_page_config(
-    page_title="Analisis Sentimen",
+    page_title="Dashboard Analisis Sentimen",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -58,14 +58,63 @@ except AttributeError:
         st.markdown(txt, unsafe_allow_html=True)
 
 _css_render("""
+    <meta name="color-scheme" content="light only">
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    /* Paksa tema terang di semua perangkat (termasuk mobile browser dark mode) */
+    :root {color-scheme: light only !important;}
+    html {color-scheme: light only !important; background: #F8FAFC !important;}
+    body {background: #F8FAFC !important; color: #0F172A !important;}
 
     html, body, [data-testid="stAppViewContainer"] * {
         font-family: 'Inter', -apple-system, sans-serif !important;
     }
     header, footer, #MainMenu {visibility: hidden;}
-    .stApp {background: #F8FAFC;}
+    .stApp {background: #F8FAFC !important;}
+    [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"] {
+        background: #F8FAFC !important; color: #0F172A !important;
+    }
+    .main, .block-container {background: transparent !important; color: #0F172A !important;}
+
+    /* Override dark-mode preferensi browser/OS — semua teks tetap gelap di latar terang */
+    @media (prefers-color-scheme: dark) {
+        :root, html, body, .stApp,
+        [data-testid="stAppViewContainer"], [data-testid="stMain"],
+        [data-testid="stHeader"], .main, .block-container {
+            background: #F8FAFC !important;
+            color: #0F172A !important;
+            color-scheme: light only !important;
+        }
+        [data-testid="stSidebar"], [data-testid="stSidebar"] > div {
+            background: #FFFFFF !important;
+            color: #0F172A !important;
+        }
+        [data-testid="stSidebar"] * {color: #0F172A !important;}
+        [data-testid="stSidebar"] .sidebar-brand {color: #0A3B5E !important;}
+        /* Input, textarea, select agar tetap latar terang */
+        input, textarea, select {
+            background: #FFFFFF !important;
+            color: #0F172A !important;
+            -webkit-text-fill-color: #0F172A !important;
+        }
+        [data-testid="stTextInput"] input,
+        [data-testid="stNumberInput"] input,
+        [data-testid="stDateInput"] input,
+        [data-testid="stSelectbox"] div[data-baseweb="select"] {
+            background: #FFFFFF !important;
+            color: #0F172A !important;
+            border-color: #E2E8F0 !important;
+        }
+        /* Kartu dan container tetap putih */
+        [data-testid="stMetric"], [data-testid="stExpander"],
+        div[data-testid="stTable"], div[data-testid="stDataFrame"] {
+            background: #FFFFFF !important; color: #0F172A !important;
+        }
+        /* Markdown dan paragraf tetap teks gelap */
+        [data-testid="stMarkdown"], [data-testid="stMarkdown"] * {color: #0F172A !important;}
+        h1, h2, h3, h4, h5, h6, p, span, label, div {color: inherit !important;}
+    }
     .block-container {padding-top: 1.2rem !important; padding-bottom: 2.5rem; max-width: 1400px !important;}
 
     /* Sidebar modern */
@@ -487,10 +536,7 @@ def _get_dsn() -> str:
 
 
 def _buat_koneksi():
-    dsn = _get_dsn()
-    if "localhost" in dsn or "127.0.0.1" in dsn:
-        return psycopg2.connect(dsn)
-    return psycopg2.connect(dsn, sslmode="require")
+    return psycopg2.connect(_get_dsn(), sslmode="require")
 
 
 def get_conn():
@@ -2120,7 +2166,7 @@ def halaman_login() -> None:
             'color:white; font-size:1.8rem; margin-bottom:0.8rem; '
             'box-shadow:0 8px 20px rgba(30,90,138,0.25);">📊</div>'
             '<div style="color:#0A3B5E; font-size:1.55rem; font-weight:800; '
-            'margin:0 0 0.4rem 0; letter-spacing:-0.02em;">Analisis Sentimen</div>'
+            'margin:0 0 0.4rem 0; letter-spacing:-0.02em;">Dashboard Analisis Sentimen</div>'
             '<div style="color:#64748B; font-size:0.92rem;">Instagram, TikTok, dan X · Google Play Store</div>'
             '</div>',
             unsafe_allow_html=True,
