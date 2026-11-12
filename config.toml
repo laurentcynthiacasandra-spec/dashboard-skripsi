@@ -1,0 +1,9 @@
+# Paksa tema terang (light) di semua perangkat.
+# Streamlit akan mengabaikan preferensi dark mode dari browser/OS pengguna.
+[theme]
+base = "light"
+primaryColor = "#1E5A8A"
+backgroundColor = "#F8FAFC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F172A"
+font = "sans serif"
