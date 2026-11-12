@@ -503,7 +503,8 @@ _css_render("""
     }
     .stTable tbody tr td {font-size: 0.88rem; color: #334155;}
 
-    /* Tabel Riwayat Unggahan — scroll menyamping di mobile */
+    /* Tabel Riwayat Unggahan — scroll menyamping di mobile.
+       Semua sel satu baris (nowrap) + ellipsis supaya tidak pecah vertikal. */
     .riwayat-scroll {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -514,11 +515,21 @@ _css_render("""
     }
     .riwayat-tbl {
         width: 100%;
-        min-width: 820px;        /* lebar minimum supaya kolom tidak mengecil */
+        min-width: 1100px;       /* lebih lebar supaya catatan tidak terlalu sempit */
         border-collapse: collapse;
         font-size: 0.88rem;
         color: #334155;
+        table-layout: fixed;     /* lebar kolom ditentukan dari <col>/width, bukan isi */
     }
+    /* Lebar tiap kolom supaya konsisten */
+    .riwayat-tbl th:nth-child(1), .riwayat-tbl td:nth-child(1) {width: 52px;}   /* ID      */
+    .riwayat-tbl th:nth-child(2), .riwayat-tbl td:nth-child(2) {width: 150px;}  /* Waktu   */
+    .riwayat-tbl th:nth-child(3), .riwayat-tbl td:nth-child(3) {width: 110px;}  /* Pengguna*/
+    .riwayat-tbl th:nth-child(4), .riwayat-tbl td:nth-child(4) {width: 110px;}  /* Aplikasi*/
+    .riwayat-tbl th:nth-child(5), .riwayat-tbl td:nth-child(5) {width: 230px;}  /* Berkas  */
+    .riwayat-tbl th:nth-child(6), .riwayat-tbl td:nth-child(6) {width: 70px;}   /* Baris   */
+    .riwayat-tbl th:nth-child(7), .riwayat-tbl td:nth-child(7) {width: 110px;}  /* Status  */
+    .riwayat-tbl th:nth-child(8), .riwayat-tbl td:nth-child(8) {width: auto;}   /* Catatan */
     .riwayat-tbl thead th {
         background: #F1F5F9;
         color: #0A3B5E;
@@ -532,35 +543,35 @@ _css_render("""
         white-space: nowrap;
     }
     .riwayat-tbl thead th.r-num {text-align: right;}
+    /* SEMUA sel: satu baris + ellipsis kalau terlalu panjang */
     .riwayat-tbl tbody td {
-        padding: 0.6rem 0.8rem;
+        padding: 0.55rem 0.8rem;
         border-bottom: 1px solid #F1F5F9;
-        vertical-align: top;
+        vertical-align: middle;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .riwayat-tbl tbody td.r-berkas,
     .riwayat-tbl tbody td.r-catatan {
-        white-space: normal;
-        word-break: break-word;
         font-size: 0.82rem;
         color: #475569;
-        max-width: 280px;
     }
     .riwayat-tbl tbody td.r-num {text-align: right;}
     .riwayat-tbl tbody tr:nth-child(even) {background: #FAFBFC;}
     .riwayat-tbl tbody tr:hover {background: #F8FAFC;}
 
-    /* Hint scroll di mobile */
+    /* Mobile: ukuran lebih kecil tapi tetap nowrap */
     @media (max-width: 768px) {
         .riwayat-scroll {
             position: relative;
-            box-shadow: inset -8px 0 8px -8px rgba(0,0,0,0.1);
+            box-shadow: inset -12px 0 10px -10px rgba(0,0,0,0.15);
         }
-        .riwayat-tbl {font-size: 0.82rem;}
+        .riwayat-tbl {font-size: 0.82rem; min-width: 900px;}
         .riwayat-tbl thead th {padding: 0.5rem 0.6rem; font-size: 0.68rem;}
         .riwayat-tbl tbody td {padding: 0.5rem 0.6rem;}
-        .riwayat-tbl tbody td.r-berkas,
-        .riwayat-tbl tbody td.r-catatan {max-width: 200px;}
+        /* Kolom lebih sempit di mobile */
+        .riwayat-tbl th:nth-child(5), .riwayat-tbl td:nth-child(5) {width: 180px;}
     }
 
     /* Streamlit tabs (login) */
@@ -1621,9 +1632,10 @@ def halaman_admin(user: dict) -> None:
                 jumlah = int(r['jumlah_baris']) if pd.notna(r['jumlah_baris']) else 0
                 sc = warna_status.get(r["status"], "#64748B")
                 berkas_full = r['berkas'] or '-'
-                berkas = berkas_full if len(berkas_full) <= 36 else berkas_full[:33] + '...'
                 catatan_full = r['catatan'] or '-'
-                catatan = catatan_full if len(catatan_full) <= 140 else catatan_full[:137] + '...'
+                # Teks lengkap disimpan di title (tooltip). Sel sendiri pakai CSS ellipsis.
+                berkas = berkas_full
+                catatan = catatan_full
                 baris_html.append(
                     f'<tr>'
                     f'<td class="r-sel">{int(r["id"])}</td>'
