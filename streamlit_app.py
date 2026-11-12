@@ -503,6 +503,66 @@ _css_render("""
     }
     .stTable tbody tr td {font-size: 0.88rem; color: #334155;}
 
+    /* Tabel Riwayat Unggahan — scroll menyamping di mobile */
+    .riwayat-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        background: #FFFFFF;
+    }
+    .riwayat-tbl {
+        width: 100%;
+        min-width: 820px;        /* lebar minimum supaya kolom tidak mengecil */
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        color: #334155;
+    }
+    .riwayat-tbl thead th {
+        background: #F1F5F9;
+        color: #0A3B5E;
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        text-align: left;
+        padding: 0.65rem 0.8rem;
+        border-bottom: 1px solid #E2E8F0;
+        white-space: nowrap;
+    }
+    .riwayat-tbl thead th.r-num {text-align: right;}
+    .riwayat-tbl tbody td {
+        padding: 0.6rem 0.8rem;
+        border-bottom: 1px solid #F1F5F9;
+        vertical-align: top;
+        white-space: nowrap;
+    }
+    .riwayat-tbl tbody td.r-berkas,
+    .riwayat-tbl tbody td.r-catatan {
+        white-space: normal;
+        word-break: break-word;
+        font-size: 0.82rem;
+        color: #475569;
+        max-width: 280px;
+    }
+    .riwayat-tbl tbody td.r-num {text-align: right;}
+    .riwayat-tbl tbody tr:nth-child(even) {background: #FAFBFC;}
+    .riwayat-tbl tbody tr:hover {background: #F8FAFC;}
+
+    /* Hint scroll di mobile */
+    @media (max-width: 768px) {
+        .riwayat-scroll {
+            position: relative;
+            box-shadow: inset -8px 0 8px -8px rgba(0,0,0,0.1);
+        }
+        .riwayat-tbl {font-size: 0.82rem;}
+        .riwayat-tbl thead th {padding: 0.5rem 0.6rem; font-size: 0.68rem;}
+        .riwayat-tbl tbody td {padding: 0.5rem 0.6rem;}
+        .riwayat-tbl tbody td.r-berkas,
+        .riwayat-tbl tbody td.r-catatan {max-width: 200px;}
+    }
+
     /* Streamlit tabs (login) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 2rem; border-bottom: 1px solid #E2E8F0;
@@ -1546,35 +1606,78 @@ def halaman_admin(user: dict) -> None:
         if riwayat.empty:
             st.info("Belum ada unggahan.")
         else:
-            # Header baris
-            kolom_header = st.columns([0.6, 1.4, 1, 1, 1.6, 0.7, 1, 2.2, 1])
-            for k, lbl in zip(kolom_header,
-                              ["ID", "Waktu", "Pengguna", "Aplikasi", "Berkas",
-                               "Baris", "Status", "Catatan", "Aksi"]):
-                k.markdown(f"<div style='color:#0A3B5E; font-weight:700; font-size:0.78rem; "
-                           f"text-transform:uppercase; letter-spacing:0.3px; padding:0.4rem 0 0.6rem 0; "
-                           f"border-bottom:1px solid #E2E8F0;'>{lbl}</div>", unsafe_allow_html=True)
+            warna_status = {"Selesai": "#059669", "Sebagian gagal": "#D97706",
+                            "Dibatalkan": "#94A3B8", "Diterima": "#1E5A8A",
+                            "Tanpa data baru": "#64748B"}
+            # Render tabel sebagai HTML murni supaya tetap horizontal di mobile
+            # (pakai overflow-x auto biar bisa di-scroll menyamping)
+            def _esc(s):
+                return (str(s).replace('&', '&amp;').replace('<', '&lt;')
+                        .replace('>', '&gt;').replace('"', '&quot;'))
 
+            baris_html = []
             for _, r in riwayat.iterrows():
-                kolom = st.columns([0.6, 1.4, 1, 1, 1.6, 0.7, 1, 2.2, 1])
-                kolom[0].markdown(f"<div style='padding:0.5rem 0;'>{int(r['id'])}</div>", unsafe_allow_html=True)
                 waktu_s = r["waktu"].strftime("%d %b %Y %H:%M") if pd.notna(r["waktu"]) else "-"
-                kolom[1].markdown(f"<div style='padding:0.5rem 0; font-size:0.85rem;'>{waktu_s}</div>", unsafe_allow_html=True)
-                kolom[2].markdown(f"<div style='padding:0.5rem 0;'>{r['username']}</div>", unsafe_allow_html=True)
-                kolom[3].markdown(f"<div style='padding:0.5rem 0;'>{r['aplikasi']}</div>", unsafe_allow_html=True)
-                kolom[4].markdown(f"<div style='padding:0.5rem 0; font-size:0.82rem; word-break:break-all;'>{r['berkas'] or '-'}</div>", unsafe_allow_html=True)
-                kolom[5].markdown(f"<div style='padding:0.5rem 0; text-align:right;'>{int(r['jumlah_baris']) if pd.notna(r['jumlah_baris']) else 0}</div>", unsafe_allow_html=True)
-                warna_status = {"Selesai": "#059669", "Sebagian gagal": "#D97706",
-                                "Dibatalkan": "#94A3B8", "Diterima": "#1E5A8A",
-                                "Tanpa data baru": "#64748B"}.get(r["status"], "#64748B")
-                kolom[6].markdown(f"<div style='padding:0.5rem 0; color:{warna_status}; font-weight:600; font-size:0.85rem;'>{r['status']}</div>", unsafe_allow_html=True)
-                kolom[7].markdown(f"<div style='padding:0.5rem 0; font-size:0.82rem; color:#475569;'>{(r['catatan'] or '-')[:200]}</div>", unsafe_allow_html=True)
-                # Tombol batalkan (kecuali sudah Dibatalkan)
-                if r["status"] != "Dibatalkan":
-                    id_r = int(r["id"])
-                    if kolom[8].button("Batalkan", key=f"batal_{id_r}", use_container_width=True):
-                        sukses, pesan = batalkan_unggahan(id_r, r["id_awal"], r["id_akhir"],
-                                                          jumlah_baris=r.get("jumlah_baris"))
+                jumlah = int(r['jumlah_baris']) if pd.notna(r['jumlah_baris']) else 0
+                sc = warna_status.get(r["status"], "#64748B")
+                berkas_full = r['berkas'] or '-'
+                berkas = berkas_full if len(berkas_full) <= 36 else berkas_full[:33] + '...'
+                catatan_full = r['catatan'] or '-'
+                catatan = catatan_full if len(catatan_full) <= 140 else catatan_full[:137] + '...'
+                baris_html.append(
+                    f'<tr>'
+                    f'<td class="r-sel">{int(r["id"])}</td>'
+                    f'<td class="r-sel">{_esc(waktu_s)}</td>'
+                    f'<td class="r-sel">{_esc(r["username"])}</td>'
+                    f'<td class="r-sel">{_esc(r["aplikasi"])}</td>'
+                    f'<td class="r-sel r-berkas" title="{_esc(berkas_full)}">{_esc(berkas)}</td>'
+                    f'<td class="r-sel r-num">{jumlah:,}</td>'
+                    f'<td class="r-sel" style="color:{sc}; font-weight:600;">{_esc(r["status"])}</td>'
+                    f'<td class="r-sel r-catatan" title="{_esc(catatan_full)}">{_esc(catatan)}</td>'
+                    f'</tr>'
+                )
+            tabel_html = (
+                '<div class="riwayat-scroll">'
+                '<table class="riwayat-tbl">'
+                '<thead><tr>'
+                '<th>ID</th><th>Waktu</th><th>Pengguna</th><th>Aplikasi</th>'
+                '<th>Berkas</th><th class="r-num">Baris</th><th>Status</th><th>Catatan</th>'
+                '</tr></thead>'
+                f'<tbody>{"".join(baris_html)}</tbody>'
+                '</table></div>'
+            )
+            st.markdown(tabel_html, unsafe_allow_html=True)
+
+            # Form pembatalan: pilih ID yang masih aktif, lalu klik tombol
+            aktif = riwayat[riwayat["status"] != "Dibatalkan"].copy()
+            if not aktif.empty:
+                st.markdown(
+                    '<div style="margin-top:1.1rem; color:#0A3B5E; font-weight:600; '
+                    'font-size:0.9rem;">Batalkan unggahan</div>',
+                    unsafe_allow_html=True,
+                )
+                opsi = {
+                    int(row["id"]): f'#{int(row["id"])} — {row["aplikasi"]} '
+                                    f'({(int(row["jumlah_baris"]) if pd.notna(row["jumlah_baris"]) else 0):,} baris, '
+                                    f'{row["status"]})'
+                    for _, row in aktif.iterrows()
+                }
+                cb1, cb2 = st.columns([3, 1])
+                with cb1:
+                    pilih_id = st.selectbox(
+                        "ID unggahan",
+                        options=list(opsi.keys()),
+                        format_func=lambda i: opsi[i],
+                        label_visibility="collapsed",
+                        key="batal_pilih_id",
+                    )
+                with cb2:
+                    if st.button("Batalkan", key="batal_btn_main", use_container_width=True):
+                        row = aktif[aktif["id"] == pilih_id].iloc[0]
+                        sukses, pesan = batalkan_unggahan(
+                            int(pilih_id), row["id_awal"], row["id_akhir"],
+                            jumlah_baris=row.get("jumlah_baris"),
+                        )
                         if sukses:
                             st.success(pesan)
                             riwayat_unggahan.clear()
@@ -1584,8 +1687,6 @@ def halaman_admin(user: dict) -> None:
                             st.rerun()
                         else:
                             st.error(pesan)
-                else:
-                    kolom[8].markdown("<div style='padding:0.5rem 0; color:#94A3B8; font-size:0.82rem;'>—</div>", unsafe_allow_html=True)
 
     with kartu("Kelola Pengguna"):
         pengguna = daftar_pengguna()
