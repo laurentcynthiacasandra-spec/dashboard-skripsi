@@ -1620,40 +1620,71 @@ def halaman_admin(user: dict) -> None:
             warna_status = {"Selesai": "#059669", "Sebagian gagal": "#D97706",
                             "Dibatalkan": "#94A3B8", "Diterima": "#1E5A8A",
                             "Tanpa data baru": "#64748B"}
-            # Render tabel sebagai HTML murni supaya tetap horizontal di mobile
-            # (pakai overflow-x auto biar bisa di-scroll menyamping)
+            # Render tabel sebagai HTML dengan INLINE STYLES (tidak bergantung CSS global)
             def _esc(s):
                 return (str(s).replace('&', '&amp;').replace('<', '&lt;')
                         .replace('>', '&gt;').replace('"', '&quot;'))
 
+            # Style baku setiap sel: satu baris, ellipsis kalau kepanjangan
+            SEL = ('padding:0.55rem 0.8rem; border-bottom:1px solid #F1F5F9; '
+                   'vertical-align:middle; white-space:nowrap; overflow:hidden; '
+                   'text-overflow:ellipsis; font-size:0.85rem; color:#334155;')
+            SEL_KECIL = SEL + ' font-size:0.80rem; color:#475569;'
+            TH = ('background:#F1F5F9; color:#0A3B5E; font-weight:700; '
+                  'font-size:0.72rem; text-transform:uppercase; letter-spacing:0.3px; '
+                  'text-align:left; padding:0.65rem 0.8rem; '
+                  'border-bottom:1px solid #E2E8F0; white-space:nowrap;')
+            TH_NUM = TH + ' text-align:right;'
+
             baris_html = []
-            for _, r in riwayat.iterrows():
+            for i, (_, r) in enumerate(riwayat.iterrows()):
                 waktu_s = r["waktu"].strftime("%d %b %Y %H:%M") if pd.notna(r["waktu"]) else "-"
                 jumlah = int(r['jumlah_baris']) if pd.notna(r['jumlah_baris']) else 0
                 sc = warna_status.get(r["status"], "#64748B")
                 berkas_full = r['berkas'] or '-'
                 catatan_full = r['catatan'] or '-'
-                # Teks lengkap disimpan di title (tooltip). Sel sendiri pakai CSS ellipsis.
-                berkas = berkas_full
-                catatan = catatan_full
+                bg_row = '#FAFBFC' if i % 2 == 1 else '#FFFFFF'
                 baris_html.append(
-                    f'<tr>'
-                    f'<td class="r-sel">{int(r["id"])}</td>'
-                    f'<td class="r-sel">{_esc(waktu_s)}</td>'
-                    f'<td class="r-sel">{_esc(r["username"])}</td>'
-                    f'<td class="r-sel">{_esc(r["aplikasi"])}</td>'
-                    f'<td class="r-sel r-berkas" title="{_esc(berkas_full)}">{_esc(berkas)}</td>'
-                    f'<td class="r-sel r-num">{jumlah:,}</td>'
-                    f'<td class="r-sel" style="color:{sc}; font-weight:600;">{_esc(r["status"])}</td>'
-                    f'<td class="r-sel r-catatan" title="{_esc(catatan_full)}">{_esc(catatan)}</td>'
+                    f'<tr style="background:{bg_row};">'
+                    f'<td style="{SEL}">{int(r["id"])}</td>'
+                    f'<td style="{SEL}">{_esc(waktu_s)}</td>'
+                    f'<td style="{SEL}">{_esc(r["username"])}</td>'
+                    f'<td style="{SEL}">{_esc(r["aplikasi"])}</td>'
+                    f'<td style="{SEL_KECIL}" title="{_esc(berkas_full)}">{_esc(berkas_full)}</td>'
+                    f'<td style="{SEL} text-align:right;">{jumlah:,}</td>'
+                    f'<td style="{SEL} color:{sc}; font-weight:600;">{_esc(r["status"])}</td>'
+                    f'<td style="{SEL_KECIL}" title="{_esc(catatan_full)}">{_esc(catatan_full)}</td>'
                     f'</tr>'
                 )
+
             tabel_html = (
-                '<div class="riwayat-scroll">'
-                '<table class="riwayat-tbl">'
+                # Outer wrapper dengan horizontal scroll
+                '<div style="overflow-x:auto; -webkit-overflow-scrolling:touch; '
+                'width:100%; border:1px solid #E2E8F0; border-radius:8px; '
+                'background:#FFFFFF; box-shadow:inset -12px 0 10px -10px rgba(0,0,0,0.12);">'
+                # Tabel dengan min-width 1100px supaya pasti horizontal
+                '<table style="width:100%; min-width:1100px; border-collapse:collapse; '
+                'table-layout:fixed;">'
+                # Column widths explicit
+                '<colgroup>'
+                '<col style="width:52px;">'
+                '<col style="width:150px;">'
+                '<col style="width:110px;">'
+                '<col style="width:110px;">'
+                '<col style="width:230px;">'
+                '<col style="width:70px;">'
+                '<col style="width:110px;">'
+                '<col>'
+                '</colgroup>'
                 '<thead><tr>'
-                '<th>ID</th><th>Waktu</th><th>Pengguna</th><th>Aplikasi</th>'
-                '<th>Berkas</th><th class="r-num">Baris</th><th>Status</th><th>Catatan</th>'
+                f'<th style="{TH}">ID</th>'
+                f'<th style="{TH}">Waktu</th>'
+                f'<th style="{TH}">Pengguna</th>'
+                f'<th style="{TH}">Aplikasi</th>'
+                f'<th style="{TH}">Berkas</th>'
+                f'<th style="{TH_NUM}">Baris</th>'
+                f'<th style="{TH}">Status</th>'
+                f'<th style="{TH}">Catatan</th>'
                 '</tr></thead>'
                 f'<tbody>{"".join(baris_html)}</tbody>'
                 '</table></div>'
