@@ -1372,24 +1372,37 @@ def halaman_sentimen() -> None:
                     marker=dict(size=10, color="white", line=dict(color="#334155", width=2)),
                     name="Negatif", legendgroup="legend_sym",
                 ))
+                # Hitung dtick adaptif: kalau rentang data > 12 bulan, tampilkan tiap 2-3 bulan
+                # supaya label di sumbu X tidak berdempetan di mobile.
+                jumlah_bulan_unik = tren["bulan"].nunique()
+                if jumlah_bulan_unik <= 6:
+                    _dtick, _tickformat = "M1", "%b %Y"
+                elif jumlah_bulan_unik <= 12:
+                    _dtick, _tickformat = "M2", "%b %Y"
+                elif jumlah_bulan_unik <= 24:
+                    _dtick, _tickformat = "M3", "%b %Y"
+                else:
+                    _dtick, _tickformat = "M4", "%b %Y"
                 fig.update_layout(
                     xaxis=dict(
                         title="",
                         tickfont=dict(size=10, family="Inter", color="#475569"),
                         showgrid=True, gridcolor="#F1F5F9",
-                        tickformat="%b %Y",
-                        dtick="M1",
-                        tickangle=-45,
+                        tickformat=_tickformat,
+                        dtick=_dtick,
+                        tickangle=-30,          # kemiringan lebih kecil supaya tidak ribet
+                        automargin=True,        # auto-sesuaikan margin bawah
                         showline=True, linecolor="#CBD5E1",
+                        ticks="outside", ticklen=4,
                     ),
                     yaxis=dict(title="", tickfont=dict(size=11, family="Inter", color="#475569"), showgrid=True, gridcolor="#F1F5F9",
                                tickformat=",d", separatethousands=True),
-                    height=460, margin=dict(l=10, r=10, t=10, b=150),
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.48, xanchor="center", x=0.5, font=dict(size=11, family="Inter")),
+                    height=460, margin=dict(l=10, r=10, t=10, b=90),
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.32, xanchor="center", x=0.5, font=dict(size=11, family="Inter")),
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                     hovermode="x unified",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     with kartu("Rincian"):
         tampil = pivot[["aplikasi", "Positif", "Negatif", "Total", "Pos_pct"]].copy()
