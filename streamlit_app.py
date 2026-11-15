@@ -1739,11 +1739,11 @@ def halaman_performa() -> None:
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=300, show_spinner=False)
 def analisis_keluhan_pujian(aplikasi: str, label: str, top_n: int = 10) -> list:
-    """Baca pre-computed CSV `pipeline/keluhan_pujian.csv`.
+    """Baca pre-computed CSV `keluhan_pujian.csv`.
     Super cepat karena tidak query DB + tidak compute vectorizer.
     Sudah menormalisasi variasi negasi (tidak/enggak/nggak/ga/gak)."""
     import os
-    path = "pipeline/keluhan_pujian.csv"
+    path = "keluhan_pujian.csv"
     if not os.path.exists(path):
         return []
     try:
