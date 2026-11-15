@@ -12,7 +12,7 @@ import psycopg2
 import streamlit as st
 
 st.set_page_config(
-    page_title=" Analisis Sentimen",
+    page_title="Dashboard Analisis Sentimen",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -2597,7 +2597,7 @@ def halaman_login() -> None:
             'color:white; font-size:1.8rem; margin-bottom:0.8rem; '
             'box-shadow:0 8px 20px rgba(30,90,138,0.25);">📊</div>'
             '<div style="color:#0A3B5E; font-size:1.55rem; font-weight:800; '
-            'margin:0 0 0.4rem 0; letter-spacing:-0.02em;">Dashboard Analisis Sentimen</div>'
+            'margin:0 0 0.4rem 0; letter-spacing:-0.02em;">Analisis Sentimen</div>'
             '<div style="color:#64748B; font-size:0.92rem;">Instagram, TikTok, dan X · Google Play Store</div>'
             '</div>',
             unsafe_allow_html=True,
