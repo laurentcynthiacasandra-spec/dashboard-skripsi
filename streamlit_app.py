@@ -1372,37 +1372,147 @@ def halaman_sentimen() -> None:
                     marker=dict(size=10, color="white", line=dict(color="#334155", width=2)),
                     name="Negatif", legendgroup="legend_sym",
                 ))
-                # Hitung dtick adaptif: kalau rentang data > 12 bulan, tampilkan tiap 2-3 bulan
-                # supaya label di sumbu X tidak berdempetan di mobile.
-                jumlah_bulan_unik = tren["bulan"].nunique()
-                if jumlah_bulan_unik <= 6:
-                    _dtick, _tickformat = "M1", "%b %Y"
-                elif jumlah_bulan_unik <= 12:
-                    _dtick, _tickformat = "M2", "%b %Y"
-                elif jumlah_bulan_unik <= 24:
-                    _dtick, _tickformat = "M3", "%b %Y"
-                else:
-                    _dtick, _tickformat = "M4", "%b %Y"
                 fig.update_layout(
                     xaxis=dict(
                         title="",
                         tickfont=dict(size=10, family="Inter", color="#475569"),
                         showgrid=True, gridcolor="#F1F5F9",
-                        tickformat=_tickformat,
-                        dtick=_dtick,
-                        tickangle=-30,          # kemiringan lebih kecil supaya tidak ribet
-                        automargin=True,        # auto-sesuaikan margin bawah
+                        tickformat="%b %Y",
+                        dtick="M1",
+                        tickangle=-45,
                         showline=True, linecolor="#CBD5E1",
-                        ticks="outside", ticklen=4,
                     ),
                     yaxis=dict(title="", tickfont=dict(size=11, family="Inter", color="#475569"), showgrid=True, gridcolor="#F1F5F9",
                                tickformat=",d", separatethousands=True),
-                    height=460, margin=dict(l=10, r=10, t=10, b=90),
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.32, xanchor="center", x=0.5, font=dict(size=11, family="Inter")),
+                    height=460, margin=dict(l=10, r=10, t=10, b=150),
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.48, xanchor="center", x=0.5, font=dict(size=11, family="Inter")),
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                     hovermode="x unified",
                 )
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig, use_container_width=True)
+
+
+    # ============================================================
+    # KARTU BARU: Perbandingan Prediksi CNB vs SVM per Aplikasi
+    # Hanya muncul kalau filter algoritma = "Semua algoritma"
+    # ============================================================
+    if model == "Semua algoritma":
+        with kartu("Perbandingan Prediksi CNB vs SVM per Aplikasi"):
+            st.caption(
+                "Grafik ini membandingkan hasil prediksi **Complement Naive Bayes (CNB)** vs "
+                "**Linear SVM** pada aplikasi yang sama, untuk melihat perbedaan karakteristik "
+                "kedua algoritma dalam melabeli ulasan positif dan negatif."
+            )
+            model_list = daftar_model()
+            if len(model_list) < 2:
+                st.info("Perbandingan membutuhkan minimal 2 model. Saat ini hanya tersedia: "
+                        + ", ".join(model_list))
+            else:
+                df_per_model = []
+                for m in model_list:
+                    tmp = sentimen_tersaring(aplikasi, dari, sampai, tahun, m).copy()
+                    if not tmp.empty:
+                        tmp["model"] = m
+                        df_per_model.append(tmp)
+                if not df_per_model:
+                    st.info("Tidak ada data prediksi untuk filter ini.")
+                else:
+                    df_cmp = pd.concat(df_per_model, ignore_index=True)
+                    fig_cmp = go.Figure()
+
+                    def _kode_pendek(nm):
+                        """CNB atau SVM dari nama panjang."""
+                        if "bayes" in nm.lower() or "cnb" in nm.lower() or "nb" in nm.lower().split():
+                            return "CNB"
+                        if "svm" in nm.lower() or "svc" in nm.lower():
+                            return "SVM"
+                        return nm
+
+                    # Palette: CNB pakai nuansa biru, SVM pakai nuansa orange
+                    # Positif = warna terang/soft, Negatif = warna gelap/tua
+                    palette = {
+                        ("CNB", "Positif"): "#60A5FA",   # biru muda
+                        ("CNB", "Negatif"): "#1E40AF",   # biru tua
+                        ("SVM", "Positif"): "#FB923C",   # orange muda
+                        ("SVM", "Negatif"): "#9A3412",   # orange tua
+                    }
+
+                    for mdl in model_list:
+                        for lbl in ["Positif", "Negatif"]:
+                            sub_d = df_cmp[(df_cmp["model"] == mdl) & (df_cmp["label"] == lbl)]
+                            if sub_d.empty:
+                                continue
+                            kode = _kode_pendek(mdl)
+                            warna_bar = palette.get((kode, lbl), "#64748B")
+                            fig_cmp.add_trace(go.Bar(
+                                name=f"{kode} – {lbl}",
+                                x=sub_d["aplikasi"],
+                                y=sub_d["jumlah"],
+                                marker_color=warna_bar,
+                                text=sub_d["jumlah"].apply(lambda v: f"{int(v):,}".replace(",", ".")),
+                                textposition="outside",
+                                textfont=dict(size=10, family="Inter"),
+                            ))
+                    fig_cmp.update_layout(
+                        barmode="group",
+                        xaxis=dict(title="", tickfont=dict(size=12, family="Inter"), showgrid=False),
+                        yaxis=dict(title="Jumlah Ulasan",
+                                   tickfont=dict(size=11, family="Inter"),
+                                   tickformat=",d", separatethousands=True,
+                                   showgrid=True, gridcolor="#F1F5F9"),
+                        height=420, margin=dict(l=10, r=10, t=30, b=10),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                                    xanchor="center", x=0.5, title=""),
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    )
+                    st.plotly_chart(fig_cmp, use_container_width=True,
+                                    config={"displayModeBar": False})
+                    # Insight dinamis: pakai nama model actual dari daftar_model()
+                    insight_html = "<ul style='margin:0.5rem 0 0 1.2rem; padding:0; color:#334155; font-size:0.88rem;'>"
+                    def _nama_pendek(nm):
+                        """Ubah 'Naive Bayes (Complement)' -> 'CNB', 'SVM (kernel linear)' -> 'SVM'."""
+                        if "bayes" in nm.lower() or "cnb" in nm.lower():
+                            return "CNB"
+                        if "svm" in nm.lower() or "svc" in nm.lower():
+                            return "SVM"
+                        return nm
+                    for app_n in sorted(df_cmp["aplikasi"].unique()):
+                        rangkuman = []
+                        for mdl in model_list:
+                            pos_c = df_cmp[(df_cmp["aplikasi"] == app_n) & (df_cmp["model"] == mdl) & (df_cmp["label"] == "Positif")]["jumlah"].sum()
+                            total_c = df_cmp[(df_cmp["aplikasi"] == app_n) & (df_cmp["model"] == mdl)]["jumlah"].sum()
+                            pct_c = (pos_c / total_c * 100) if total_c else 0
+                            rangkuman.append((_nama_pendek(mdl), pct_c))
+                        if len(rangkuman) >= 2:
+                            m1, p1 = rangkuman[0]
+                            m2, p2 = rangkuman[1]
+                            beda = p2 - p1
+                            if abs(beda) < 0.1:
+                                tanda = "setara"
+                            elif beda > 0:
+                                tanda = "lebih tinggi"
+                            else:
+                                tanda = "lebih rendah"
+                            insight_html += (
+                                f"<li><b>{app_n}</b>: {m1} memprediksi positif {p1:.1f}%, "
+                                f"{m2} memprediksi positif {p2:.1f}% "
+                                f"({tanda} {abs(beda):.1f} poin dari {m1}).</li>"
+                            )
+                        else:
+                            parts = ", ".join(f"{m}: {p:.1f}%" for m, p in rangkuman)
+                            insight_html += f"<li><b>{app_n}</b>: {parts} positif.</li>"
+                    insight_html += "</ul>"
+                    st.markdown(
+                        f'<div style="padding:0.8rem 1rem; background:#F8FAFC; border-left:4px solid #1E5A8A; border-radius:8px; margin-top:0.8rem;">'
+                        f'<div style="color:#64748B; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:0.3rem;">📊 Insight Perbandingan</div>'
+                        f'{insight_html}'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.caption(
+                        "💡 **Catatan**: filter di atas pengaruh ke chart ini juga. "
+                        "Untuk lihat perbandingan semua data, pilih **'Semua aplikasi'** dan **'Semua tahun'**."
+                    )
 
     with kartu("Rincian"):
         tampil = pivot[["aplikasi", "Positif", "Negatif", "Total", "Pos_pct"]].copy()
@@ -1483,15 +1593,38 @@ def tampilkan_performa_app(app: str, perf: pd.DataFrame, df_metrik: pd.DataFrame
         return
     model_terbaik = sub.sort_values("macro_f1", ascending=False).iloc[0]["model"]
 
+    # --- Hitung nilai MAX per kolom metrik ---
+    kolom_metrik = ["accuracy", "precision_pos", "recall_pos", "f1_pos", "macro_f1"]
+    max_per_kolom = {k: sub[k].max() for k in kolom_metrik}
+
     # Tabel metrik
     with kartu(f"Metrik Evaluasi — {app}"):
         header = (
             '<tr style="background:#F1F5F9;">'
             '<th style="padding:0.6rem 0.8rem; text-align:left; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.3px; color:#0A3B5E;">Algoritma</th>'
             + _th_cell("Accuracy") + _th_cell("Precision") + _th_cell("Recall")
-            + _th_cell("F1") + _th_cell("Macro-F1") + _th_cell("Waktu (dtk)")
+            + _th_cell("F1") + _th_cell("Macro-F1")
             + '</tr>'
         )
+
+        def _sel(val, kolom, formatter):
+            """Return (text, extra_style) for a metric cell.
+            Highlight dengan background kuning + bold hijau tua + 🏆 untuk nilai tertinggi."""
+            teks = formatter(val)
+            is_max = (pd.notna(val)) and (val == max_per_kolom[kolom])
+            if is_max:
+                extra_style = (
+                    "background:#FEF3C7; color:#047857; "
+                    "font-weight:700; border-radius:4px;"
+                )
+                teks = f'{teks} 🏆'
+            else:
+                extra_style = ""
+            return teks, extra_style
+
+        def _fmt(v):
+            return ("%.4f" % v).replace(".", ",")
+
         baris = []
         for _, r in sub.iterrows():
             terbaik = r["model"] == model_terbaik
@@ -1499,21 +1632,21 @@ def tampilkan_performa_app(app: str, perf: pd.DataFrame, df_metrik: pd.DataFrame
             warna = "#064E3B" if terbaik else "#334155"
             tebal = "font-weight:600;" if terbaik else ""
             bintang = ' <span style="color:#F59E0B; font-size:1rem;">★</span>' if terbaik else ""
-            acc_s = ("%.4f" % r["accuracy"]).replace(".", ",")
-            prec_s = ("%.4f" % r["precision_pos"]).replace(".", ",")
-            rec_s = ("%.4f" % r["recall_pos"]).replace(".", ",")
-            f1_s = ("%.4f" % r["f1_pos"]).replace(".", ",")
-            mf1_s = ("%.4f" % r["macro_f1"]).replace(".", ",")
-            wl_s = str(r["waktu_latih"]).replace(".", ",") if pd.notna(r["waktu_latih"]) else "-"
+
+            acc_t, acc_sty = _sel(r["accuracy"], "accuracy", _fmt)
+            prec_t, prec_sty = _sel(r["precision_pos"], "precision_pos", _fmt)
+            rec_t, rec_sty = _sel(r["recall_pos"], "recall_pos", _fmt)
+            f1_t, f1_sty = _sel(r["f1_pos"], "f1_pos", _fmt)
+            mf1_t, mf1_sty = _sel(r["macro_f1"], "macro_f1", _fmt)
+
             baris.append(
                 f'<tr style="background:{bg}; color:{warna}; {tebal}">'
                 f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0;">{r["model"]}{bintang}</td>'
-                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right;">{acc_s}</td>'
-                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right;">{prec_s}</td>'
-                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right;">{rec_s}</td>'
-                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right;">{f1_s}</td>'
-                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right;">{mf1_s}</td>'
-                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right;">{wl_s}</td>'
+                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right; {acc_sty}">{acc_t}</td>'
+                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right; {prec_sty}">{prec_t}</td>'
+                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right; {rec_sty}">{rec_t}</td>'
+                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right; {f1_sty}">{f1_t}</td>'
+                f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right; {mf1_sty}">{mf1_t}</td>'
                 '</tr>'
             )
         st.markdown(
@@ -1522,6 +1655,11 @@ def tampilkan_performa_app(app: str, perf: pd.DataFrame, df_metrik: pd.DataFrame
             unsafe_allow_html=True,
         )
 
+        # --- Caption penjelasan ---
+        st.caption(
+            "🏆 = nilai tertinggi untuk metrik tersebut. "
+            "★ pada baris = model terbaik secara keseluruhan (berdasarkan macro-F1)."
+        )
     # Confusion matrix 2 model side by side (ukuran kecil)
     with kartu(f"Confusion Matrix — {app}"):
         sub_met = df_metrik[df_metrik["aplikasi"] == app]
@@ -1596,6 +1734,122 @@ def halaman_performa() -> None:
 # ---------------------------------------------------------------------------
 # Halaman: Admin
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Halaman: Evaluasi (Top Keluhan & Pujian per Aplikasi)
+# ---------------------------------------------------------------------------
+@st.cache_data(ttl=300, show_spinner=False)
+def analisis_keluhan_pujian(aplikasi: str, label: str, top_n: int = 10) -> list:
+    """Baca pre-computed CSV `pipeline/keluhan_pujian.csv`.
+    Super cepat karena tidak query DB + tidak compute vectorizer.
+    Sudah menormalisasi variasi negasi (tidak/enggak/nggak/ga/gak)."""
+    import os
+    path = "pipeline/keluhan_pujian.csv"
+    if not os.path.exists(path):
+        return []
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return []
+    df_sub = df[(df["aplikasi"] == aplikasi) & (df["label"] == label)].copy()
+    df_sub = df_sub.sort_values("rank").head(top_n)
+    if df_sub.empty:
+        return []
+    hasil = []
+    for _, r in df_sub.iterrows():
+        sampel_str = str(r.get("sampel", ""))
+        sampel = [s.strip() for s in sampel_str.split(" || ") if s.strip()]
+        hasil.append({
+            "frasa": r["frasa"],
+            "jumlah": int(r["jumlah"]),
+            "sampel": sampel[:3],
+        })
+    return hasil
+
+
+def halaman_evaluasi() -> None:
+    page_title("Top Keluhan & Pujian", "Insight langsung dari ulasan pengguna per aplikasi")
+
+    # Intro
+    st.markdown(
+        '<div style="padding:0.9rem 1.2rem; background:#F0F9FF; border-left:4px solid #0284C7; border-radius:8px; margin-bottom:1rem;">'
+        '<div style="color:#334155; font-size:0.88rem; line-height:1.55;">'
+        'Halaman ini menyajikan <b>Top 10 Keluhan</b> dan <b>Top 10 Pujian</b> yang paling sering muncul pada ulasan pengguna, '
+        'beserta <b>contoh ulasan asli</b>. Insight ini membantu memahami isu nyata yang dialami pengguna di setiap aplikasi.'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Tabs per aplikasi
+    data = ringkasan_global()
+    aplikasi_list = sorted(data["aplikasi"]) if data.get("aplikasi") else ["Instagram", "TikTok", "X"]
+    tabs = st.tabs(aplikasi_list)
+
+    for i, app in enumerate(aplikasi_list):
+        with tabs[i]:
+            col1, col2 = st.columns(2)
+
+            # Top Keluhan (sentimen Negatif)
+            with col1:
+                with kartu(f"🔴 Top Keluhan — {app}"):
+                    with st.spinner(f"Menganalisis keluhan {app}..."):
+                        keluhan = analisis_keluhan_pujian(app, "Negatif", top_n=10)
+                    if not keluhan:
+                        st.info(f"Data keluhan belum tersedia untuk {app}.")
+                    else:
+                        for idx, item in enumerate(keluhan, 1):
+                            jumlah_s = f"{item['jumlah']:,}".replace(",", ".")
+                            st.markdown(
+                                f'<div style="padding:0.6rem 0.8rem; margin-bottom:0.5rem; '
+                                f'background:#FEF2F2; border-left:3px solid #DC2626; border-radius:6px;">'
+                                f'<div style="color:#991B1B; font-weight:700; font-size:0.9rem;">'
+                                f'{idx}. "{item["frasa"]}" <span style="color:#64748B; font-weight:400; font-size:0.75rem;">({jumlah_s} ulasan)</span>'
+                                f'</div>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                            # Expander sampel
+                            with st.expander(f"Lihat {len(item['sampel'])} contoh ulasan"):
+                                for s in item["sampel"]:
+                                    st.caption(f"• {s}")
+
+            # Top Pujian (sentimen Positif)
+            with col2:
+                with kartu(f"🟢 Top Pujian — {app}"):
+                    with st.spinner(f"Menganalisis pujian {app}..."):
+                        pujian = analisis_keluhan_pujian(app, "Positif", top_n=10)
+                    if not pujian:
+                        st.info(f"Data pujian belum tersedia untuk {app}.")
+                    else:
+                        for idx, item in enumerate(pujian, 1):
+                            jumlah_s = f"{item['jumlah']:,}".replace(",", ".")
+                            st.markdown(
+                                f'<div style="padding:0.6rem 0.8rem; margin-bottom:0.5rem; '
+                                f'background:#ECFDF5; border-left:3px solid #059669; border-radius:6px;">'
+                                f'<div style="color:#064E3B; font-weight:700; font-size:0.9rem;">'
+                                f'{idx}. "{item["frasa"]}" <span style="color:#64748B; font-weight:400; font-size:0.75rem;">({jumlah_s} ulasan)</span>'
+                                f'</div>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                            with st.expander(f"Lihat {len(item['sampel'])} contoh ulasan"):
+                                for s in item["sampel"]:
+                                    st.caption(f"• {s}")
+
+    # Penjelasan
+    with st.expander("ℹ️ Bagaimana insight ini dihasilkan?"):
+        st.markdown("""
+Insight di halaman ini dihasilkan dengan menganalisis **frasa 2-kata (bigram)** yang paling sering muncul:
+
+- **Top Keluhan** diambil dari ulasan yang diprediksi **Negatif** oleh model utama (SVM).
+- **Top Pujian** diambil dari ulasan yang diprediksi **Positif** oleh model utama (SVM).
+- Setiap frasa harus muncul minimal **10 kali** di korpus agar dianggap signifikan.
+- Contoh ulasan disajikan agar pengguna dapat memverifikasi konteks keluhan/pujian secara langsung.
+
+**Manfaat**: insight ini memberikan gambaran **isu nyata pengguna** yang dapat dijadikan bahan evaluasi dan pengembangan aplikasi.
+        """)
+
+
 def halaman_admin(user: dict) -> None:
     page_title("Halaman Admin", "Unggah data ulasan baru dan kelola pengguna")
     # Tampilkan pesan error dari upload terakhir kalau ada
@@ -1616,6 +1870,40 @@ def halaman_admin(user: dict) -> None:
 
     with kartu("Unggah Data Ulasan Baru"):
         st.caption("Unggah ulasan mentah hasil scraping (kolom wajib: content, score, at). Sistem memproses otomatis: preprocessing, pelabelan hybrid, dan prediksi dua model. Hanya ulasan yang tanggalnya setelah data terakhir aplikasi tersebut yang dimuat, maksimal 2.000 ulasan per unggahan.")
+             # ===== Template CSV Download =====
+        with st.expander("📥 Unduh Template CSV (klik di sini)", expanded=False):
+            st.caption("Unduh template terlebih dahulu untuk memastikan format kolom CSV sesuai dengan yang diterima sistem.")
+            import io
+            template_df = pd.DataFrame({
+                "content": [
+                    "Contoh ulasan positif, aplikasinya bagus dan lancar",
+                    "Contoh ulasan negatif, aplikasi sering force close",
+                    "Aplikasi cukup bagus tapi fiturnya kurang lengkap",
+                ],
+                "score": [5, 1, 3],
+                "at": ["2026-01-15", "2026-01-16", "2026-01-17"],
+            })
+            csv_buffer = io.StringIO()
+            template_df.to_csv(csv_buffer, index=False)
+            st.download_button(
+                label="⬇️ Unduh Template CSV",
+                data=csv_buffer.getvalue(),
+                file_name="template_unggah_ulasan.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+            st.markdown("""
+**Format kolom yang wajib ada:**
+- **`content`** (teks) — isi ulasan dari pengguna
+- **`score`** (angka 1–5) — rating bintang pengguna
+- **`at`** (tanggal format YYYY-MM-DD) — tanggal ulasan ditulis
+
+**Batasan:**
+- Maksimal **2.000 baris** per unggahan
+- File harus bertipe `.csv` atau `.xlsx`
+- Semua kolom harus terisi
+            """)
+        st.markdown("---")   
         c1, c2 = st.columns([1, 2])
         with c1: aplikasi = st.selectbox("Aplikasi target", data["aplikasi"], key="admin_app")
         with c2: berkas = st.file_uploader("Berkas ulasan (.csv atau .xlsx)", type=["csv", "xlsx"], key="admin_file")
@@ -1623,6 +1911,13 @@ def halaman_admin(user: dict) -> None:
             proses_unggahan(user, aplikasi, berkas)
             ringkasan_global.clear()
             riwayat_unggahan.clear()
+            performa_semua.clear()
+            metrik_model.clear()
+            sentimen_tersaring.clear()
+            sentimen_bulanan.clear()
+            daftar_tahun.clear()
+            rentang_tanggal.clear()
+            analisis_keluhan_pujian.clear()
             st.rerun()
 
     with kartu("Riwayat Unggahan"):
@@ -1633,71 +1928,40 @@ def halaman_admin(user: dict) -> None:
             warna_status = {"Selesai": "#059669", "Sebagian gagal": "#D97706",
                             "Dibatalkan": "#94A3B8", "Diterima": "#1E5A8A",
                             "Tanpa data baru": "#64748B"}
-            # Render tabel sebagai HTML dengan INLINE STYLES (tidak bergantung CSS global)
+            # Render tabel sebagai HTML murni supaya tetap horizontal di mobile
+            # (pakai overflow-x auto biar bisa di-scroll menyamping)
             def _esc(s):
                 return (str(s).replace('&', '&amp;').replace('<', '&lt;')
                         .replace('>', '&gt;').replace('"', '&quot;'))
 
-            # Style baku setiap sel: satu baris, ellipsis kalau kepanjangan
-            SEL = ('padding:0.55rem 0.8rem; border-bottom:1px solid #F1F5F9; '
-                   'vertical-align:middle; white-space:nowrap; overflow:hidden; '
-                   'text-overflow:ellipsis; font-size:0.85rem; color:#334155;')
-            SEL_KECIL = SEL + ' font-size:0.80rem; color:#475569;'
-            TH = ('background:#F1F5F9; color:#0A3B5E; font-weight:700; '
-                  'font-size:0.72rem; text-transform:uppercase; letter-spacing:0.3px; '
-                  'text-align:left; padding:0.65rem 0.8rem; '
-                  'border-bottom:1px solid #E2E8F0; white-space:nowrap;')
-            TH_NUM = TH + ' text-align:right;'
-
             baris_html = []
-            for i, (_, r) in enumerate(riwayat.iterrows()):
+            for _, r in riwayat.iterrows():
                 waktu_s = r["waktu"].strftime("%d %b %Y %H:%M") if pd.notna(r["waktu"]) else "-"
                 jumlah = int(r['jumlah_baris']) if pd.notna(r['jumlah_baris']) else 0
                 sc = warna_status.get(r["status"], "#64748B")
                 berkas_full = r['berkas'] or '-'
                 catatan_full = r['catatan'] or '-'
-                bg_row = '#FAFBFC' if i % 2 == 1 else '#FFFFFF'
+                # Teks lengkap disimpan di title (tooltip). Sel sendiri pakai CSS ellipsis.
+                berkas = berkas_full
+                catatan = catatan_full
                 baris_html.append(
-                    f'<tr style="background:{bg_row};">'
-                    f'<td style="{SEL}">{int(r["id"])}</td>'
-                    f'<td style="{SEL}">{_esc(waktu_s)}</td>'
-                    f'<td style="{SEL}">{_esc(r["username"])}</td>'
-                    f'<td style="{SEL}">{_esc(r["aplikasi"])}</td>'
-                    f'<td style="{SEL_KECIL}" title="{_esc(berkas_full)}">{_esc(berkas_full)}</td>'
-                    f'<td style="{SEL} text-align:right;">{jumlah:,}</td>'
-                    f'<td style="{SEL} color:{sc}; font-weight:600;">{_esc(r["status"])}</td>'
-                    f'<td style="{SEL_KECIL}" title="{_esc(catatan_full)}">{_esc(catatan_full)}</td>'
+                    f'<tr>'
+                    f'<td class="r-sel">{int(r["id"])}</td>'
+                    f'<td class="r-sel">{_esc(waktu_s)}</td>'
+                    f'<td class="r-sel">{_esc(r["username"])}</td>'
+                    f'<td class="r-sel">{_esc(r["aplikasi"])}</td>'
+                    f'<td class="r-sel r-berkas" title="{_esc(berkas_full)}">{_esc(berkas)}</td>'
+                    f'<td class="r-sel r-num">{jumlah:,}</td>'
+                    f'<td class="r-sel" style="color:{sc}; font-weight:600;">{_esc(r["status"])}</td>'
+                    f'<td class="r-sel r-catatan" title="{_esc(catatan_full)}">{_esc(catatan)}</td>'
                     f'</tr>'
                 )
-
             tabel_html = (
-                # Outer wrapper dengan horizontal scroll
-                '<div style="overflow-x:auto; -webkit-overflow-scrolling:touch; '
-                'width:100%; border:1px solid #E2E8F0; border-radius:8px; '
-                'background:#FFFFFF; box-shadow:inset -12px 0 10px -10px rgba(0,0,0,0.12);">'
-                # Tabel dengan min-width 1100px supaya pasti horizontal
-                '<table style="width:100%; min-width:1100px; border-collapse:collapse; '
-                'table-layout:fixed;">'
-                # Column widths explicit
-                '<colgroup>'
-                '<col style="width:52px;">'
-                '<col style="width:150px;">'
-                '<col style="width:110px;">'
-                '<col style="width:110px;">'
-                '<col style="width:230px;">'
-                '<col style="width:70px;">'
-                '<col style="width:110px;">'
-                '<col>'
-                '</colgroup>'
+                '<div class="riwayat-scroll">'
+                '<table class="riwayat-tbl">'
                 '<thead><tr>'
-                f'<th style="{TH}">ID</th>'
-                f'<th style="{TH}">Waktu</th>'
-                f'<th style="{TH}">Pengguna</th>'
-                f'<th style="{TH}">Aplikasi</th>'
-                f'<th style="{TH}">Berkas</th>'
-                f'<th style="{TH_NUM}">Baris</th>'
-                f'<th style="{TH}">Status</th>'
-                f'<th style="{TH}">Catatan</th>'
+                '<th>ID</th><th>Waktu</th><th>Pengguna</th><th>Aplikasi</th>'
+                '<th>Berkas</th><th class="r-num">Baris</th><th>Status</th><th>Catatan</th>'
                 '</tr></thead>'
                 f'<tbody>{"".join(baris_html)}</tbody>'
                 '</table></div>'
@@ -1740,6 +2004,11 @@ def halaman_admin(user: dict) -> None:
                             ringkasan_global.clear()
                             performa_semua.clear()
                             metrik_model.clear()
+                            sentimen_tersaring.clear()
+                            sentimen_bulanan.clear()
+                            daftar_tahun.clear()
+                            rentang_tanggal.clear()
+                            analisis_keluhan_pujian.clear()
                             st.rerun()
                         else:
                             st.error(pesan)
@@ -2307,6 +2576,11 @@ def proses_unggahan(user: dict, aplikasi: str, berkas) -> None:
     ringkasan_global.clear()
     performa_semua.clear()
     metrik_model.clear()
+    sentimen_tersaring.clear()
+    sentimen_bulanan.clear()
+    daftar_tahun.clear()
+    rentang_tanggal.clear()
+    analisis_keluhan_pujian.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -2362,7 +2636,7 @@ def halaman_login() -> None:
 # ---------------------------------------------------------------------------
 def aplikasi_utama() -> None:
     user = st.session_state["user"]
-    opsi = ["Ringkasan", "Perbandingan Sentimen", "Performa Algoritma"]
+    opsi = ["Ringkasan", "Perbandingan Sentimen", "Performa Algoritma", "Top Keluhan & Pujian"]
     if user["role"] == "Admin":
         opsi.append("Admin")
 
@@ -2394,6 +2668,7 @@ def aplikasi_utama() -> None:
     if pilihan == "Ringkasan": halaman_ringkasan()
     elif pilihan == "Perbandingan Sentimen": halaman_sentimen()
     elif pilihan == "Performa Algoritma": halaman_performa()
+    elif pilihan == "Top Keluhan & Pujian": halaman_evaluasi()
     elif pilihan == "Admin": halaman_admin(user)
 
 
