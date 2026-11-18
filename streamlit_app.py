@@ -1522,6 +1522,18 @@ def halaman_sentimen() -> None:
         tampil["Total"] = tampil["Total"].astype(int).map(lambda v: f"{v:,}".replace(",", "."))
         tampil["% Positif"] = tampil["% Positif"].map(lambda v: f"{v:.1f}%".replace(".", ","))
         st.table(tampil)
+        
+        unduh = pivot[["aplikasi", "Positif", "Negatif", "Total", "Pos_pct"]].copy()
+        unduh.columns = ["Aplikasi", "Positif", "Negatif", "Total", "% Positif"]
+        unduh[["Positif", "Negatif", "Total"]] = unduh[["Positif", "Negatif", "Total"]].astype(int)
+        unduh["% Positif"] = unduh["% Positif"].round(1)
+        st.download_button(
+            label="⬇️ Unduh Rincian (CSV)",
+            data=unduh.to_csv(index=False).encode("utf-8"),
+            file_name="rincian_sentimen.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
 
 
 # ---------------------------------------------------------------------------
