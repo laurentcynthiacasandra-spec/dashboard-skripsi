@@ -594,24 +594,6 @@ _css_render("""
     .stRadio > label, .stFileUploader label {
         font-weight: 500; color: #475569; font-size: 0.85rem;
     }
-    /* Tabel Metrik Evaluasi: tabel di desktop, kartu per algoritma di mobile */
-    .perf-mobile {display: none;}
-    .pm-card {
-        border: 1px solid #E2E8F0; border-radius: 10px;
-        padding: 0.75rem 0.85rem; margin-bottom: 0.7rem; background: #FFFFFF;
-    }
-    .pm-card.pm-best {background: #ECFDF5; border-color: #A7F3D0;}
-    .pm-model {font-weight: 700; color: #0A3B5E; font-size: 0.95rem; margin-bottom: 0.55rem;}
-    .pm-grid {display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem;}
-    .pm-item {padding: 0.35rem 0.5rem; border-radius: 6px; background: rgba(241,245,249,0.7);}
-    .pm-item:last-child {grid-column: 1 / -1;}
-    .pm-lab {font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.3px; color: #64748B;}
-    .pm-val {font-size: 0.95rem; font-weight: 600; color: #1E293B;}
-    .pm-item[style*="FEF3C7"] .pm-val {color: #047857;}
-    @media (max-width: 768px) {
-        .perf-tbl-wrap {display: none;}
-        .perf-mobile {display: block;}
-    }
     </style>
 """)
 
@@ -1679,29 +1661,45 @@ def tampilkan_performa_app(app: str, perf: pd.DataFrame, df_metrik: pd.DataFrame
                 f'<td style="padding:0.6rem 0.8rem; border-top:1px solid #E2E8F0; text-align:right; {mf1_sty}">{mf1_t}</td>'
                 '</tr>'
             )
-        # --- Versi mobile: satu kartu per algoritma (tabel disembunyikan di layar kecil) ---
-        label_metrik = [("accuracy", "Accuracy"), ("precision_pos", "Precision"),
-                        ("recall_pos", "Recall"), ("f1_pos", "F1"), ("macro_f1", "Macro-F1")]
-        kartu_mobile = []
-        for _, r in sub.iterrows():
-            terbaik = r["model"] == model_terbaik
-            bintang = ' <span style="color:#F59E0B;">★</span>' if terbaik else ""
-            isi = ""
-            for kol, lab in label_metrik:
+        # --- Tabel versi mobile: dibalik (baris = metrik, kolom = algoritma) agar muat di layar HP ---
+        model_urut = list(sub["model"])
+        th_m = 'padding:0.45rem 0.4rem; font-size:0.66rem; text-transform:uppercase; color:#0A3B5E; text-align:right;'
+        head_m = (
+            '<tr style="background:#F1F5F9;">'
+            f'<th style="{th_m} text-align:left;">Metrik</th>'
+            + "".join(
+                f'<th style="{th_m}">{m}'
+                + (' <span style="color:#F59E0B;">★</span>' if m == model_terbaik else "")
+                + '</th>'
+                for m in model_urut
+            )
+            + '</tr>'
+        )
+        baris_m = []
+        for kol, lab in [("accuracy", "Accuracy"), ("precision_pos", "Precision"),
+                         ("recall_pos", "Recall"), ("f1_pos", "F1"), ("macro_f1", "Macro-F1")]:
+            sel = ""
+            for _, r in sub.iterrows():
                 teks, sty = _sel(r[kol], kol, _fmt)
-                isi += (f'<div class="pm-item" style="{sty}">'
-                        f'<div class="pm-lab">{lab}</div><div class="pm-val">{teks}</div></div>')
-            kelas = "pm-card pm-best" if terbaik else "pm-card"
-            kartu_mobile.append(
-                f'<div class="{kelas}"><div class="pm-model">{r["model"]}{bintang}</div>'
-                f'<div class="pm-grid">{isi}</div></div>'
+                bg = "background:#ECFDF5;" if r["model"] == model_terbaik else ""
+                sel += (f'<td style="padding:0.45rem 0.4rem; border-top:1px solid #E2E8F0; '
+                        f'text-align:right; white-space:nowrap; {bg} {sty}">{teks}</td>')
+            baris_m.append(
+                f'<tr><td style="padding:0.45rem 0.4rem; border-top:1px solid #E2E8F0; '
+                f'font-weight:600; color:#334155;">{lab}</td>{sel}</tr>'
             )
 
         st.markdown(
-            '<div class="perf-tbl-wrap">'
-            '<table class="perf-tbl" style="width:100%; border-collapse:collapse; font-size:0.85rem; font-family:Inter;">'
+            '<style>'
+            '.perf-mob{display:none;}'
+            '@media (max-width: 768px){.perf-desk{display:none !important;} .perf-mob{display:block !important;}}'
+            '</style>'
+            '<div class="perf-desk">'
+            '<table style="width:100%; border-collapse:collapse; font-size:0.85rem; font-family:Inter;">'
             f'<thead>{header}</thead><tbody>{"".join(baris)}</tbody></table></div>'
-            f'<div class="perf-mobile">{"".join(kartu_mobile)}</div>',
+            '<div class="perf-mob" style="width:100%; overflow-x:auto;">'
+            '<table style="width:100%; border-collapse:collapse; font-size:0.8rem; font-family:Inter; table-layout:fixed;">'
+            f'<thead>{head_m}</thead><tbody>{"".join(baris_m)}</tbody></table></div>',
             unsafe_allow_html=True,
         )
 
