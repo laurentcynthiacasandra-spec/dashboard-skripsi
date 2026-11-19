@@ -1982,36 +1982,80 @@ def halaman_admin(user: dict) -> None:
                 return (str(s).replace('&', '&amp;').replace('<', '&lt;')
                         .replace('>', '&gt;').replace('"', '&quot;'))
 
+            # Gaya inline (tidak bergantung CSS global)
+            TH = ("background:#F1F5F9; color:#0A3B5E; font-weight:700; font-size:0.72rem; "
+                  "text-transform:uppercase; letter-spacing:0.3px; text-align:left; "
+                  "padding:0.6rem 0.75rem; border-bottom:1px solid #E2E8F0; white-space:nowrap;")
+            TD = ("padding:0.55rem 0.75rem; border-bottom:1px solid #F1F5F9; vertical-align:middle; "
+                  "white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")
+            TDM = ("padding:0.5rem 0.4rem; border-bottom:1px solid #F1F5F9; vertical-align:top; "
+                   "font-size:0.8rem; overflow:hidden; text-overflow:ellipsis;")
+            THM = ("background:#F1F5F9; color:#0A3B5E; font-weight:700; font-size:0.66rem; "
+                   "text-transform:uppercase; text-align:left; padding:0.5rem 0.4rem; "
+                   "border-bottom:1px solid #E2E8F0;")
+
             baris_html = []
-            for _, r in riwayat.iterrows():
+            baris_mob = []
+            for idx_r, (_, r) in enumerate(riwayat.iterrows()):
                 waktu_s = r["waktu"].strftime("%d %b %Y %H:%M") if pd.notna(r["waktu"]) else "-"
+                waktu_m = r["waktu"].strftime("%d/%m/%y %H:%M") if pd.notna(r["waktu"]) else "-"
                 jumlah = int(r['jumlah_baris']) if pd.notna(r['jumlah_baris']) else 0
+                jumlah_s = f"{jumlah:,}".replace(",", ".")
                 sc = warna_status.get(r["status"], "#64748B")
                 berkas_full = r['berkas'] or '-'
                 catatan_full = r['catatan'] or '-'
-                # Teks lengkap disimpan di title (tooltip). Sel sendiri pakai CSS ellipsis.
-                berkas = berkas_full
-                catatan = catatan_full
+                zebra = "background:#FAFBFC;" if idx_r % 2 else ""
                 baris_html.append(
-                    f'<tr>'
-                    f'<td class="r-sel">{int(r["id"])}</td>'
-                    f'<td class="r-sel">{_esc(waktu_s)}</td>'
-                    f'<td class="r-sel">{_esc(r["username"])}</td>'
-                    f'<td class="r-sel">{_esc(r["aplikasi"])}</td>'
-                    f'<td class="r-sel r-berkas" title="{_esc(berkas_full)}">{_esc(berkas)}</td>'
-                    f'<td class="r-sel r-num">{jumlah:,}</td>'
-                    f'<td class="r-sel" style="color:{sc}; font-weight:600;">{_esc(r["status"])}</td>'
-                    f'<td class="r-sel r-catatan" title="{_esc(catatan_full)}">{_esc(catatan)}</td>'
+                    f'<tr style="{zebra}">'
+                    f'<td style="{TD}">{int(r["id"])}</td>'
+                    f'<td style="{TD}">{_esc(waktu_s)}</td>'
+                    f'<td style="{TD}">{_esc(r["username"])}</td>'
+                    f'<td style="{TD}">{_esc(r["aplikasi"])}</td>'
+                    f'<td style="{TD} font-size:0.82rem; color:#475569;" title="{_esc(berkas_full)}">{_esc(berkas_full)}</td>'
+                    f'<td style="{TD} text-align:right;">{jumlah_s}</td>'
+                    f'<td style="{TD} color:{sc}; font-weight:600;">{_esc(r["status"])}</td>'
+                    f'<td style="{TD} font-size:0.82rem; color:#475569;" title="{_esc(catatan_full)}">{_esc(catatan_full)}</td>'
+                    f'</tr>'
+                )
+                # Versi mobile: 4 kolom, detail (waktu, pengguna, berkas) jadi teks kecil di bawah aplikasi
+                baris_mob.append(
+                    f'<tr style="{zebra}">'
+                    f'<td style="{TDM} color:#64748B;">#{int(r["id"])}</td>'
+                    f'<td style="{TDM}"><div style="font-weight:600; color:#0F172A;">{_esc(r["aplikasi"])}</div>'
+                    f'<div style="font-size:0.7rem; color:#64748B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'
+                    f'{_esc(waktu_m)} · {_esc(r["username"])}</div>'
+                    f'<div style="font-size:0.7rem; color:#94A3B8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" '
+                    f'title="{_esc(berkas_full)}">{_esc(berkas_full)}</div></td>'
+                    f'<td style="{TDM} text-align:right;">{jumlah_s}</td>'
+                    f'<td style="{TDM} color:{sc}; font-weight:600; font-size:0.72rem; overflow:visible; word-break:break-word;">{_esc(r["status"])}</td>'
                     f'</tr>'
                 )
             tabel_html = (
-                '<div class="riwayat-scroll">'
-                '<table class="riwayat-tbl">'
-                '<thead><tr>'
-                '<th>ID</th><th>Waktu</th><th>Pengguna</th><th>Aplikasi</th>'
-                '<th>Berkas</th><th class="r-num">Baris</th><th>Status</th><th>Catatan</th>'
-                '</tr></thead>'
+                '<style>'
+                '.rw-mob{display:none;}'
+                '@media (max-width: 768px){.rw-desk{display:none !important;} .rw-mob{display:block !important;}}'
+                '</style>'
+                # Desktop: tabel lengkap 8 kolom
+                '<div class="rw-desk" style="overflow-x:auto; width:100%; border:1px solid #E2E8F0; '
+                'border-radius:8px; background:#FFFFFF;">'
+                '<table style="width:100%; min-width:1000px; border-collapse:collapse; font-size:0.88rem; '
+                'color:#334155; table-layout:fixed;">'
+                '<colgroup><col style="width:52px"><col style="width:150px"><col style="width:100px">'
+                '<col style="width:100px"><col style="width:220px"><col style="width:80px">'
+                '<col style="width:140px"><col></colgroup>'
+                f'<thead><tr><th style="{TH}">ID</th><th style="{TH}">Waktu</th><th style="{TH}">Pengguna</th>'
+                f'<th style="{TH}">Aplikasi</th><th style="{TH}">Berkas</th><th style="{TH} text-align:right;">Baris</th>'
+                f'<th style="{TH}">Status</th><th style="{TH}">Catatan</th></tr></thead>'
                 f'<tbody>{"".join(baris_html)}</tbody>'
+                '</table></div>'
+                # Mobile: 4 kolom, muat di layar HP
+                '<div class="rw-mob" style="width:100%; border:1px solid #E2E8F0; border-radius:8px; '
+                'background:#FFFFFF; overflow:hidden;">'
+                '<table style="width:100%; border-collapse:collapse; color:#334155; table-layout:fixed;">'
+                '<colgroup><col style="width:12%"><col style="width:45%"><col style="width:16%"><col style="width:27%"></colgroup>'
+                f'<thead><tr><th style="{THM}">ID</th><th style="{THM}">Unggahan</th>'
+                f'<th style="{THM} text-align:right;">Baris</th><th style="{THM}">Status</th></tr></thead>'
+                f'<tbody>{"".join(baris_mob)}</tbody>'
                 '</table></div>'
             )
             st.markdown(tabel_html, unsafe_allow_html=True)
